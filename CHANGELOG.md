@@ -1,22 +1,28 @@
 # 更新记录
 
-## v0.3.9（2026-10-24）
+## v0.3.10（2026-10-25）
 
-### 躲边立绘高清（2026-10-25）
-- 飘着模式右侧 1x 换成交回的 251×380：`assets/peek/shy_right.png`、`tilt_right.png`。左、上、下的 1x 和长脚 `peek_legs` 没动。
-- 六张 502×760 放在 `assets/peek/@2x/`（shy_left、shy_right、tilt_left、tilt_right、tilt_top、tilt_bottom，含 B 的 shy_right）。屏幕缩放大于 100%，或立绘放大超过 1x 画布时，按屏幕像素加载这套图，再画进原来的 251×380 逻辑框，贴边位置不变。100% 且原始大小仍用 1x，右侧已经是新图。不会把 502 的图缩回 251 再放大。
+### 右探头白缝与探头 @2x
+- 右探头白缝：飘着模式右侧 1x 换成交回的 251×380（`assets/peek/shy_right.png`、`tilt_right.png`），贴边时不再露出白缝。左、上、下的 1x 和长脚 `peek_legs` 没动。
+- 探头 @2x 高清：交回的八张是右侧 1x 两张（A）加六张 502×760（B）。六张放在 `assets/peek/@2x/`（shy_left、shy_right、tilt_left、tilt_right、tilt_top、tilt_bottom，含 B 的 shy_right）。屏幕缩放大于 100%，或立绘放大超过 1x 画布时，按屏幕像素加载这套图，再画进原来的 251×380 逻辑框，贴边位置不变。100% 且原始大小仍用 1x，右侧已经是修好白缝的新图。不会把 502 的图缩回 251 再放大。
 
-### 安静时长可自选（2026-10-25）
-- 右键和托盘不再只有「安静一小时」。共用的 `fill_menu` 仍把这一项放在「显示她 / 总在最前」后面、飘着/大小前面，标题改成「安静一段时间」：15 分钟、30 分钟、1 小时，以及「自定义…」（1–1440 分钟）。倒计时用选中的分钟数，不再写死 60 分钟。
+### 安静一段时间可自选时长
+- 右键和托盘不再只有「安静一小时」。共用的 `fill_menu` 把这一项放在「显示她 / 总在最前」后面、飘着/大小前面，标题是「安静一段时间」：15 分钟、30 分钟、1 小时，以及「自定义…」（1–1440 分钟）。倒计时用选中的分钟数，不再写死 60 分钟。
 - 安静进行中，第一屏仍先显示「结束安静（还剩 N 分钟）」，点一下就结束；子菜单里再选时长会按新的时长重新算。气泡会说出这次选的时长。
 - 台词 `quiet01` 不再写成「待一小时」（进入安静时本来就不出声）。配音计划同步这一句。
 - 测试：`tests/test_voice_pack.py` 覆盖菜单位置、预设和自定义分钟。
 
-### 菜单与可选语音包（2026-10-25）
-- 右键和托盘共用 `fill_menu`：把「安静一小时」挪到「显示她 / 总在最前」后面、飘着/长脚和大小前面，打开菜单不用往下找。安静中仍显示「结束安静（还剩 N 分钟）」。
-- README 和 `说明.txt` 补了解压后怎么打开：Windows 双击 `ZhangguiPet.exe`，macOS 打开 `ZhangguiPet.app`。
-- 可选离线语音包骨架（先不附 128 句）：`assets/voice/<台词id>.wav` 或 `.ogg`，没有文件只冒泡、不报错。macOS 先探测系统 `afplay`，再才是 paplay / aplay / ffplay。菜单「声音」显示「还没装语音包」或「语音包：已装 N 句」。主路径不接在线 TTS。说明见 README 和 `assets/voice/README.md`。
+### 可选离线语音包
+- 骨架先不附 128 句：`assets/voice/<台词id>.wav` 或 `.ogg`。没有音频文件时只冒文字气泡，不报错、不联网。macOS 先探测系统 `afplay`，再才是 paplay / aplay / ffplay。菜单「声音」显示「还没装语音包」或「语音包：已装 N 句」。主路径不接在线 TTS。说明见 README 和 `assets/voice/README.md`。
 - 测试：`tests/test_voice_pack.py`；`packaging/build_win.ps1 -RunTests` 也跑它。
+
+### 安装说明
+- README 和 `说明.txt` 写了解压后怎么打开：不用安装。Windows 双击 `ZhangguiPet.exe`，macOS 打开 `ZhangguiPet.app`。解压后如果没有 exe、只有 `zhanggui_pet.py`，那是源码，按 README 用 Python 打开。
+
+### 版本
+- 程序内显示版本、`packaging/version_info.txt`（0.3.10.0）、`说明.txt`、Windows / macOS 打包脚本的默认版本都是 0.3.10。
+
+## v0.3.9（2026-10-24）
 
 ### nolegs 测试版补充（2026-10-25）
 - 右侧躲边图换成 v8 `tilt_right`（`assets/peek` 和 `assets/peek_legs`）。

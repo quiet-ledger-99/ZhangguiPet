@@ -264,12 +264,12 @@ class PetModes(unittest.TestCase):
         self.assertEqual((pet.sp.ux, pet.sp.uy, pet.sp.uw, pet.sp.uh), (dx, 0, 188, 285))
 
     def test_09_version(self):
-        self.assertEqual(Z.VERSION, '0.3.9')
-        for path in ('README.md', 'CHANGELOG.md', 'packaging/version_info.txt'):
-            self.assertIn('0.3.9', (ROOT / path).read_text(encoding='utf-8'))
+        self.assertEqual(Z.VERSION, '0.3.10')
+        for path in ('README.md', 'CHANGELOG.md', '说明.txt', 'packaging/version_info.txt'):
+            self.assertIn('0.3.10', (ROOT / path).read_text(encoding='utf-8-sig'))
         info = (ROOT / 'packaging/version_info.txt').read_text(encoding='utf-8')
-        self.assertEqual(info.count('(0, 3, 9, 0)'), 2)
-        self.assertNotIn('0.3.8', info)
+        self.assertEqual(info.count('(0, 3, 10, 0)'), 2)
+        self.assertNotIn('0.3.9', info)
 
     def test_cache_and_pending_slider_switch(self):
         pet = self.pet()
