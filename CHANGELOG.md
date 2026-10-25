@@ -2,6 +2,12 @@
 
 ## v0.3.9（2026-10-24）
 
+### 菜单与可选语音包（2026-10-25）
+- 右键和托盘共用 `fill_menu`：把「安静一小时」挪到「显示她 / 总在最前」后面、飘着/长脚和大小前面，打开菜单不用往下找。安静中仍显示「结束安静（还剩 N 分钟）」。
+- README 和 `说明.txt` 补了解压后怎么打开：Windows 双击 `ZhangguiPet.exe`，macOS 打开 `ZhangguiPet.app`。
+- 可选离线语音包骨架（先不附 128 句）：`assets/voice/<台词id>.wav` 或 `.ogg`，没有文件只冒泡、不报错。macOS 先探测系统 `afplay`，再才是 paplay / aplay / ffplay。菜单「声音」显示「还没装语音包」或「语音包：已装 N 句」。主路径不接在线 TTS。说明见 README 和 `assets/voice/README.md`。
+- 测试：`tests/test_voice_pack.py`；`packaging/build_win.ps1 -RunTests` 也跑它。
+
 ### nolegs 测试版补充（2026-10-25）
 - 右侧躲边图换成 v8 `tilt_right`（`assets/peek` 和 `assets/peek_legs`）。
 - 飘着 / 长脚切换时立绘大小一致：两种模式共用一个大小设置（长脚的上半身和飘着立绘像素一样大），以脚底中心为锚点，出腿时整个人往上长、腿露出来，收腿时落回原位，不再忽大忽小。旧设置里两套大小不同的，启动时以当前模式那套为准并同步。

@@ -7,3 +7,5 @@
 · 千问娘原作形象版权归原作者 @ZipZipPipe（B站 UID 4168597）。美术只按原作者公开条件免费使用，不得用于任何商业用途。
 · 如果你是花钱买到的，或者是从其他地方下载的，那不是作者发布的版本，请删除并到上面的唯一发布渠道获取。
 · 详细许可见 LICENSE.txt，第三方组件见 THIRD_PARTY_NOTICES.txt。
+· 解压后不用安装。Windows：双击 ZhangguiPet.exe。macOS：打开 ZhangguiPet.app。
+· 如果解压后没有 ZhangguiPet.exe、只有 zhanggui_pet.py，那是源码，按 README 用 Python 打开。

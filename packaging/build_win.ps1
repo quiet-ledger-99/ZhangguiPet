@@ -41,6 +41,10 @@ if ($RunTests) {
         & $Python tests\test_samesize.py
         if ($LASTEXITCODE) { throw 'samesize unit tests failed' }
     }
+    if (Test-Path -LiteralPath 'tests\test_voice_pack.py') {
+        & $Python tests\test_voice_pack.py
+        if ($LASTEXITCODE) { throw 'voice pack unit tests failed' }
+    }
     Remove-Item Env:QT_QPA_PLATFORM
 }
 & $Python -m PyInstaller --noconfirm --clean --workpath (Join-Path $root 'build\work') --distpath (Join-Path $root 'dist') packaging\zhanggui_pet.spec
