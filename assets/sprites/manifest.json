@@ -1,0 +1,63 @@
+{
+ "w": 251,
+ "h": 380,
+ "fps": 12.0,
+ "anims": {
+  "idle": {
+   "n": 72,
+   "type": "loop",
+   "src": "idle_neutral_143"
+  },
+  "smile": {
+   "n": 72,
+   "type": "clip",
+   "src": "neutral"
+  },
+  "smug": {
+   "n": 72,
+   "type": "clip",
+   "src": "smug"
+  },
+  "thinking": {
+   "n": 72,
+   "type": "clip",
+   "src": "thinking"
+  },
+  "smug_hold": {
+   "n": 24,
+   "type": "hold",
+   "src": "idle_smug_143"
+  },
+  "thinking_hold": {
+   "n": 24,
+   "type": "hold",
+   "src": "idle_thinking_95"
+  },
+  "wave": {
+   "n": 48,
+   "type": "clip",
+   "src": "v6_wave"
+  },
+  "huff": {
+   "n": 48,
+   "type": "clip",
+   "src": "v6_hips"
+  }
+ },
+ "fx": {
+  "sweat": {
+   "img": "sweat.png",
+   "at": [
+    176.4,
+    52.4
+   ]
+  },
+  "puff": {
+   "img": "puff.png",
+   "at": [
+    75.1,
+    104.8
+   ]
+  }
+ }
+}

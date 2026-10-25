@@ -1,0 +1,24 @@
+掌柜台桌宠 —— 第三方组件说明
+
+1. PySide6 / Shiboken6（Qt for Python）与 Qt 6
+   - 版权：The Qt Company Ltd. 及其他贡献者。
+   - 许可：本程序按 GNU 宽通用公共许可证第 3 版（LGPL-3.0）使用 PySide6 / Shiboken6 / Qt，
+     全文见 licenses/LGPL-3.0.txt（LGPL-3.0 引用的 GPL-3.0 全文见 licenses/GPL-3.0.txt）。
+   - 本程序没有修改 PySide6、Shiboken6 或 Qt 的任何代码。它们以独立的动态库文件分发
+     （程序文件夹 _internal\PySide6\、_internal\shiboken6\ 下的 .dll / .pyd），
+     你可以用兼容版本的同名文件自行替换。
+   - 源代码：PySide6 / Shiboken6 见 https://code.qt.io/cgit/pyside/pyside-setup.git/ 和 https://pypi.org/project/PySide6-Essentials/ ，
+     Qt 见 https://download.qt.io/official_releases/qt/ 。需要本程序所用版本的源码副本，也可以通过 B站私信索取。
+
+2. Python 运行时（由 PyInstaller 打包）
+   - Python Software Foundation License Version 2，见 https://docs.python.org/3/license.html 。
+
+3. PyInstaller 引导程序
+   - PyInstaller 采用 GPL-2.0 并带「引导程序例外」，允许用它打包的程序以任意许可分发。
+     见 https://pyinstaller.org/en/stable/license.html 。
+
+4. 字体
+   - 不附带任何字体文件，只调用电脑自带的系统字体（Windows 微软雅黑 / macOS 苹方等）。
+
+5. 美术
+   - 不属于第三方程序组件，许可见 LICENSE.txt 第 2 部分（版权归原作者，仅按原作者公开条件免费使用，不适用 MIT）。
