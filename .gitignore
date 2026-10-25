@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+build/
+dist/
+.venv/
+
+# 可选离线语音包不进主仓库（说明见 assets/voice/README.md）
+assets/voice/*
+!assets/voice/README.md

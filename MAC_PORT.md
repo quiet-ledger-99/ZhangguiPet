@@ -27,7 +27,7 @@ cd src && ../.venv/bin/python zhanggui_pet.py
 | `pet_platform.fullscreen_on_my_monitor` | 枚举 HWND 判断全屏 | 返回 False；改用窗口 collectionBehavior：全屏 App 自己占一个 Space，桌宠不带 FullScreenAuxiliary 就不会叠上去 |
 | 开机自启 | `winreg` HKCU\…\Run | `~/Library/LaunchAgents/local.ZhangguiPet.plist`（RunAtLoad；.app 时用 `/usr/bin/open X.app`）。菜单名“登录时自动启动” |
 | 配置目录 | `%APPDATA%\ZhangguiPet` | `~/Library/Application Support/ZhangguiPet` |
-| 语音 | `winsound` | `/usr/bin/afplay`（发布包里没有语音包，所以日志是 `voice none`，属正常） |
+| 语音 | `winsound` | 先探测 `afplay`（`which`，再看 `/usr/bin/afplay`），没有再试 paplay / aplay / ffplay。发布包里没有语音包，所以日志是 `voice none`，属正常 |
 | 低权限目录检测（integrity level） | Windows 专用 | 不适用（日志显示 `integrity ?`） |
 | 字体 | 微软雅黑 | 苹方 PingFang SC 放第一（省掉 Qt 找不到雅黑时 100ms 的字体别名扫描） |
 | 托盘 | 右下角通知区，单击显示/隐藏 | 菜单栏 NSStatusItem；macOS 上单击就是弹菜单，所以单击不再切换显示，菜单里本来就有“显示她/先藏起来”；Mac 上**不用** `setContextMenu`（macOS 27 + Qt 6.10.3 下一点图标就抛 NSException 闪退：菜单开始跟踪时 Qt 对 KitDefined 事件调了 `clickCount`），改成 `activated` 里自己 `tray_menu.popup()` 在图标下方；所有“右下角托盘”文案在 Mac 上改成“菜单栏” |

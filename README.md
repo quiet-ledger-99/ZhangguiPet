@@ -4,6 +4,9 @@
 > 免费、无广告、不盈利 · 含 AI 生成内容 · 代码大部分由 AI 编写。
 > **完全离线**：不联网、不要任何 key、不监听键盘、不收集数据；拖给她的文件只看扩展名，**绝不打开、移动、删除**。
 
+## 解压后怎么打开
+解压后不用安装。Windows：双击文件夹里的 `ZhangguiPet.exe`。macOS：打开 `ZhangguiPet.app`（第一次若被系统拦住，在访达里对它按右键，选「打开」）。如果解压后只有 `zhanggui_pet.py`、没有 exe，那是源码包，按下面「在 Windows 上运行」用 Python 打开。
+
 ## 署名与授权
 - **美术**：千问娘原作形象 © [@ZipZipPipe](https://space.bilibili.com/4168597)（B站 UID 4168597）。本程序里的立绘、表情、动作帧和躲边立绘，是基于原作形象（借助 AI 工具）制作的二创。
   **版权归原作者，仅按原作者公开条件免费使用**；美术不适用 MIT，转载、修改或再分发这些美术请以原作者公开的条件为准，不得用于任何商业用途。
@@ -46,10 +49,10 @@
 ## 托盘和右键菜单（两处一样）
 单击托盘图标：显示 / 藏起来。右键托盘图标或右键她：
 - 显示她 / 先藏起来、总在最前
+- 安静一小时（在第一屏靠前；再点一次提前结束。安静中这一项变成「结束安静（还剩 N 分钟）」）
 - 飘着 / 长脚：两项互斥切换，默认飘着。长脚默认 75%，两种模式分别记住大小；切换时保持脚底位置，必要时拉回屏幕内。v0.3.8 起长脚模式 8 段动作（待机、笑、得意、思考、两个保持动作、挥手、合扇叉腰）都是统一画风的整身重画，全部有腿。计时牌在上半身底部，上方探头继续关闭。
 - 大小：滑块 20%～150%，另有 50/75/100/125/150% 快捷档；调完停手约 1 秒，她会问一句「这个大小可以吗？」（安静模式、藏起来、全屏时不问，20 秒内不重复；开机恢复大小不问）
-- 安静一小时（再点一次提前结束）
-- 声音：静音、音量四档（默认小声 35%）
+- 声音：能看到装没装语音包；静音、音量四档（默认 35%）
 - 提醒和小动作：离开回来打招呼（默认开）、按时段问候（默认开）、喝水 / 久坐提醒（默认关）和间隔、待机小动作频率、全屏时躲起来、贴边只露半身
 - 计时器（番茄钟 / 正计时）…
 - 找回她（回到主屏幕中间，跑丢了就点这个）
@@ -68,10 +71,14 @@
 - `zhanggui-pet.log` 是事件日志（最多 256KB，自动轮换）。
 - 完全卸载：删掉程序文件夹，再删掉上面这个配置文件夹；开过“开机自动启动”的话先在菜单里取消。
 
-## 语音（预录）
-- 播放已经做好：台词 id 对应 `assets/voice/<台词id>.wav`，有文件就放，没有就只显示气泡。默认开启、音量小声，菜单里可以静音。播放不依赖 QtMultimedia：Windows 用系统自带的 winsound，Linux 用 paplay、aplay 或 ffplay。
-- **现在还没有语音包。** Day 0 的声音是阿里云百炼的云端 TTS 音色 `longxing_v3.1`（合成参数见 `voice_plan_pet.json`），要用你电脑上的 key 合成，这台测试机没法离线复现，也不想拿别的声音凑数。
-- 生成办法：`voice_plan_pet.json` 已经导出好了（128 句，约 1545 字，格式和 Day 0 的配音计划一样，带情绪标签和语气说明）。在你电脑上用 Day 0 那套合成脚本跑一遍，再执行 `python tools/import_voice.py <合成结果文件夹>`，会转成 24kHz 单声道 wav，裁掉首尾静音，统一响度，放进 `assets/voice/`。改了台词就重新跑 `python tools/export_voice_plan.py`。
+## 语音（可选离线语音包）
+主程序压缩包**不含**全量语音，运行也不要 API key。没有语音文件时，她照旧只冒文字气泡，不报错、不联网。
+
+- 文件名和台词 id 对齐：`assets/voice/<台词id>.wav`（优先）或 `.ogg`，id 见 `voice_plan_pet.json`。有这个文件就放，没有就只显示气泡。
+- 菜单「声音」里能看出状态：没装是「还没装语音包，现在只有文字气泡」；装了是「语音包：已装 N 句」。还可以静音、调音量（默认 35%）。
+- 播放不依赖 QtMultimedia，主路径也不调用在线 TTS：Windows 用系统自带的 winsound（wav），macOS 探测系统 `afplay`，Linux 用 paplay、aplay 或 ffplay。macOS 上 `.ogg` 交给 `afplay`；Windows 的 winsound 只播 wav。
+- **另下语音包（可选）**：主 zip / app **不要**把 128 句打进去。语音包发布后，把 `<台词id>.wav`（或 `.ogg`）放进程序里已经有的 `assets/voice/`（和精灵图同一层，里面有一份说明）。源码或源码包就是仓库里的 `assets/voice/`。Windows 安装包在 `ZhangguiPet.exe` 旁边的 `_internal\assets\voice\`。macOS 安装包在 `ZhangguiPet.app/Contents/Frameworks/assets/voice/`（`Contents/Resources/assets/voice/` 是同一目录）。放好后重新打开菜单就能看到句数。详见 `assets/voice/README.md`。
+- 自己准备音频（仍然不在主程序里联网）：`voice_plan_pet.json` 是配音计划（128 句，约 1545 字，带情绪标签）。在你自己的电脑上合成后，执行 `python tools/import_voice.py <合成结果文件夹>`，会转成 24kHz 单声道 wav，裁掉首尾静音，统一响度，放进 `assets/voice/`。改了台词就重新跑 `python tools/export_voice_plan.py`。这些 wav 留在本机，不必提交进主仓库。
 
 ## 给 v0.4 留的接口（可选联网聊天 / TTS，默认关）
 本体只通过 `pet_brain.py` 要台词：`brain.line(类别)` 必须同步返回、不能卡界面；`brain.chat(文字, 上下文, 回调)` 在 v0.3 里固定返回 False。
@@ -122,11 +129,11 @@ spec 里已经写好排除的 Qt 模块、图标和 exe 版本信息（产品名
 | `assets/peek/` | 躲屏幕边的立绘：左右各两张（害羞 / 探头），上、下各一张探头图（害羞 = 程序里往屏幕外缩回去一截，缩多少见 `peek.json`） |
 | `assets/masks/` | 每段动画的并集遮罩（`tools/make_assets.py` 生成） |
 | `assets/icon.png / icon.ico` | 托盘和 exe 图标（位图） |
-| `assets/voice/` | 预录语音（目前为空） |
+| `assets/voice/` | 可选离线语音包（主包默认只有说明，不含 128 句；见该目录 README） |
 | `voice_plan_pet.json` | 给 TTS 用的配音计划 |
 | `tools/demo_v03.py`、`tools/env_up.sh`、`tools/fake_desktop.py` | 在虚拟屏上录演示（真实鼠标操作 + 托盘 + 可拖文件的假桌面） |
 | `tools/export_voice_plan.py`、`tools/import_voice.py` | 导出配音计划 / 导入合成好的语音 |
-| `tests/test_v035.py`、`tests/test_v036.py` | 离屏单元测试（`QT_QPA_PLATFORM=offscreen python tests/test_v036.py`；v0.3.6 的素材检查要 numpy、Pillow、opencv，没有就跳过那一项） |
+| `tests/test_v035.py`、`tests/test_v036.py`、`tests/test_voice_pack.py` | 离屏单元测试（`QT_QPA_PLATFORM=offscreen python tests/test_v036.py`；v0.3.6 的素材检查要 numpy、Pillow、opencv，没有就跳过那一项） |
 | `tools/art036/` | v0.3.6 美术工具：去青边和边缘统计（`edgecheck.py`、`stats_v036.py`）、去帽徽旁珍珠（`pearls.py`）、躲边立绘抠图（`cut_peek.py`） |
 | `CHANGELOG.md` | 版本更新记录 |
 | `demo_v03.mp4`、`demo_v03.png` | v0.3 演示视频和拼图 |

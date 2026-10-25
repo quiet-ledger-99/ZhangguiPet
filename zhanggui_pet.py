@@ -1590,6 +1590,13 @@ class Pet(QWidget):
         m.addSeparator()
         act('显示她' if (self.user_hidden or not self.isVisible()) else ('先藏起来' if self.tray_ok else '躲到屏幕边上'), self.toggle_hidden)
         act('总在最前', lambda on: self.set_on_top(on), checked=st['on_top'])
+        # 安静一小时放在第一屏靠前（标题、显示/藏起来、总在最前之后；飘着/大小之前）。
+        # Windows 托盘右键和角色右键都走 fill_menu，改这里两边一起生效。
+        if self.quiet():
+            left = int((st['quiet_until'] - time.time()) // 60) + 1
+            act(f'结束安静（还剩 {left} 分钟）', self.end_quiet)
+        else:
+            act('安静一小时（不主动说话、不出声）', self.start_quiet)
         mode_menu = m.addMenu('飘着 / 长脚')
         modes = QActionGroup(mode_menu); modes.setExclusive(True)
         for legs, label in ((False, '飘着'), (True, '长脚')):
@@ -1610,15 +1617,15 @@ class Pet(QWidget):
         sm.addSeparator()
         for v in (50, 75, 100, 125, 150):
             act(f'{v}%', lambda _=False, v=v: self.set_scale(v / 100), menu=sm)
-        # 安静 / 声音
-        if self.quiet():
-            left = int((st['quiet_until'] - time.time()) // 60) + 1
-            act(f'结束安静（还剩 {left} 分钟）', self.end_quiet)
-        else:
-            act('安静一小时（不主动说话、不出声）', self.start_quiet)
+        self.voice.scan()
         vm = m.addMenu('声音')
         act('静音', lambda on: self.set_opt('muted', on), checked=st['muted'], menu=vm)
-        if not self.voice.available():
+        nvoice = len(self.voice.ids)
+        if nvoice:
+            act(f'语音包：已装 {nvoice} 句', enabled=False, menu=vm)
+            if not self.voice.can_play():
+                act('（这台电脑放不了这些声音，仍然只显示气泡）', enabled=False, menu=vm)
+        else:
             act('（还没装语音包，现在只有文字气泡）', enabled=False, menu=vm)
         vm.addSeparator()
         g = QActionGroup(vm)

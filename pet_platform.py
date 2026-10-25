@@ -2,7 +2,7 @@
 """和操作系统打交道的部分：配置目录、设置、日志、空闲时间、全屏检测、开机自启、播放语音。
 全部离线；Windows 用 ctypes 调系统 API；macOS 用 ctypes 调 CoreGraphics / LaunchAgent / afplay（见 MAC_PORT.md）；
 其他系统有降级实现（主要给开发/测试用）。"""
-import os, sys, json, time, platform, subprocess, wave, array, ctypes, collections, datetime
+import os, sys, json, time, platform, shutil, subprocess, wave, array, ctypes, collections, datetime
 
 ASSET_TAG = 0x13320F1D        # 资源包标签（打包时写入，自检用）
 
@@ -749,10 +749,48 @@ def autostart_set(on):
     return 'legacy_removed' if removed else True
 
 
-# ---------------- 预录语音播放（不依赖 QtMultimedia） ----------------
+# ---------------- 预录语音播放（不依赖 QtMultimedia，也不接在线 TTS） ----------------
+# 可选语音包：assets/voice/<台词id>.wav（优先）或 .ogg。主包可以不带这些文件。
+_AFPLAY = '/usr/bin/afplay'
+_OGG_KINDS = ('afplay', 'paplay', 'ffplay')
+
+
+def resolve_audio_player(is_win=None, is_mac=None, which=None, executable=None):
+    """找出本机用来放预录语音的程序。返回 (kind, argv)。
+    macOS 先探测 afplay（which，再看 /usr/bin/afplay），然后才是 paplay / aplay / ffplay。
+    Windows 用 winsound，argv 为 None。都没有就 (None, None)，调用方只显示气泡。"""
+    if is_win is None:
+        is_win = IS_WIN
+    if is_mac is None:
+        is_mac = IS_MAC
+    if is_win:
+        return 'winsound', None
+    if which is None:
+        which = shutil.which
+    if executable is None:
+        def executable(path):
+            return os.path.isfile(path) and os.access(path, os.X_OK)
+    order = []
+    if is_mac:
+        order.append(('afplay', ['afplay']))
+    order.extend((
+        ('paplay', ['paplay']),
+        ('aplay', ['aplay', '-q']),
+        ('ffplay', ['ffplay', '-nodisp', '-autoexit', '-loglevel', 'quiet']),
+    ))
+    for kind, argv in order:
+        found = which(argv[0])
+        if found:
+            return kind, [found, *argv[1:]]
+        if kind == 'afplay' and executable(_AFPLAY):
+            return kind, [_AFPLAY, *argv[1:]]
+    return None, None
+
+
 class Voice:
-    """assets/voice/<台词id>.wav（16-bit PCM）。按音量把采样缩放后写到配置目录的临时文件再播：
-    Windows 用自带的 winsound（异步），macOS 用系统自带 afplay，其他系统找 paplay/aplay/ffplay。没有语音文件就静默。"""
+    """assets/voice/<台词id>.wav（16-bit PCM，按音量缩放后写到临时文件再播）或 .ogg（交给播放器，并带上音量参数）。
+    Windows 用自带的 winsound（只播 wav），macOS 用系统自带 afplay，其他系统找 paplay、aplay 或 ffplay。
+    没有语音文件、或这台电脑没有播放器：返回 False，不抛错。"""
 
     def __init__(self, voice_dir, conf, log):
         self.dir = voice_dir
@@ -764,56 +802,109 @@ class Voice:
         self.log = log
         self.flip = 0
         self.proc = None
+        self.paths = {}
         self.ids = set()
-        if os.path.isdir(voice_dir):
-            self.ids = {f[:-4] for f in os.listdir(voice_dir) if f.endswith('.wav')}
-        self.player = None
-        if IS_MAC:
-            self.player = ['/usr/bin/afplay']
-        elif not IS_WIN:
-            import shutil
-            for p in (['paplay'], ['aplay', '-q'], ['ffplay', '-nodisp', '-autoexit', '-loglevel', 'quiet']):
-                if shutil.which(p[0]):
-                    self.player = p; break
+        self.kind, self.player = resolve_audio_player()
         self.last = None   # 测试用：最近一次播放的 (id, 文件)
+        self.scan()
+
+    def scan(self):
+        """重新看一遍语音目录。同一句同时有 wav 和 ogg 时用 wav。读目录失败就当成没有包。"""
+        found = {}
+        rank = {'.wav': 0, '.ogg': 1}
+        try:
+            names = os.listdir(self.dir) if self.dir and os.path.isdir(self.dir) else []
+        except OSError:
+            names = []
+        for name in names:
+            base, ext = os.path.splitext(name)
+            low = ext.lower()
+            if not base or low not in rank:
+                continue
+            path = os.path.join(self.dir, name)
+            if not os.path.isfile(path):
+                continue
+            cur = found.get(base)
+            if cur is None or rank[low] < cur[0]:
+                found[base] = (rank[low], path, low)
+        self.paths = {k: (v[1], v[2]) for k, v in found.items()}
+        self.ids = set(self.paths)
+        return self.ids
 
     def available(self):
         return bool(self.ids)
 
+    def can_play(self):
+        return self.kind == 'winsound' or bool(self.player)
+
     def has(self, line_id):
         return line_id in self.ids
 
+    def _scaled_wav(self, src, volume):
+        os.makedirs(self.cache_dir, exist_ok=True)
+        with wave.open(src, 'rb') as w:
+            params = w.getparams()
+            data = w.readframes(w.getnframes())
+        if params.sampwidth == 2:
+            a = array.array('h', data)
+            if sys.byteorder == 'big':
+                a.byteswap()
+            k = max(0.0, min(1.0, volume))
+            a = array.array('h', (int(x * k) for x in a))
+            if sys.byteorder == 'big':
+                a.byteswap()
+            data = a.tobytes()
+        self.flip ^= 1
+        out = os.path.join(self.cache_dir, f'say{self.flip}.wav')
+        with wave.open(out, 'wb') as w:
+            w.setparams(params)
+            w.writeframes(data)
+        return out
+
+    def _argv(self, path, volume, ext):
+        if not self.player:
+            return None
+        argv = list(self.player)
+        if ext == '.ogg':
+            if self.kind not in _OGG_KINDS:
+                return None
+            vol = max(0.0, min(1.0, float(volume)))
+            if self.kind == 'afplay':
+                argv += ['-v', f'{vol:.2f}']
+            elif self.kind == 'paplay':
+                argv += ['--volume', str(int(round(vol * 65536)))]
+            else:
+                argv += ['-volume', str(int(round(vol * 100)))]
+        return argv + [path]
+
     def play(self, line_id, volume):
-        if line_id not in self.ids or volume <= 0:
+        if volume <= 0:
             return False
+        self.scan()
+        item = self.paths.get(line_id)
+        if not item:
+            return False
+        path, ext = item
         try:
-            os.makedirs(self.cache_dir, exist_ok=True)
-            src = os.path.join(self.dir, line_id + '.wav')
-            with wave.open(src, 'rb') as w:
-                params = w.getparams()
-                data = w.readframes(w.getnframes())
-            if params.sampwidth == 2:
-                a = array.array('h', data)
-                if sys.byteorder == 'big': a.byteswap()
-                k = max(0.0, min(1.0, volume))
-                a = array.array('h', (int(x * k) for x in a))
-                if sys.byteorder == 'big': a.byteswap()
-                data = a.tobytes()
-            self.flip ^= 1
-            out = os.path.join(self.cache_dir, f'say{self.flip}.wav')
-            with wave.open(out, 'wb') as w:
-                w.setparams(params)
-                w.writeframes(data)
+            if ext == '.wav':
+                out = self._scaled_wav(path, volume)
+            elif ext == '.ogg' and self.kind in _OGG_KINDS:
+                out = path
+            else:
+                return False
             self.last = (line_id, out)
             if os.environ.get('ZHANGGUI_PET_NO_AUDIO') == '1':      # 测试机没有声卡
                 return True
-            if IS_WIN:
+            if self.kind == 'winsound':
                 import winsound
                 winsound.PlaySound(out, winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
-            elif self.player:
-                if self.proc and self.proc.poll() is None:
-                    self.proc.terminate()
-                self.proc = subprocess.Popen(self.player + [out], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return True
+            argv = self._argv(out, volume, ext)
+            if not argv:
+                return False
+            if self.proc and self.proc.poll() is None:
+                self.proc.terminate()
+            self.proc = subprocess.Popen(argv, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             return True
         except Exception as e:
             self.log('voice failed', type(e).__name__)
@@ -821,7 +912,7 @@ class Voice:
 
     def stop(self):
         try:
-            if IS_WIN:
+            if self.kind == 'winsound':
                 import winsound
                 winsound.PlaySound(None, 0)
             elif self.proc and self.proc.poll() is None:
