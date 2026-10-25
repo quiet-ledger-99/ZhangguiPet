@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 """和操作系统打交道的部分：配置目录、设置、日志、空闲时间、全屏检测、开机自启、播放语音。
-全部离线；Windows 用 ctypes 调系统 API，其他系统有降级实现（主要给开发/测试用）。"""
+全部离线；Windows 用 ctypes 调系统 API；macOS 用 ctypes 调 CoreGraphics / LaunchAgent / afplay（见 MAC_PORT.md）；
+其他系统有降级实现（主要给开发/测试用）。"""
 import os, sys, json, time, platform, subprocess, wave, array, ctypes, collections, datetime
 
 ASSET_TAG = 0x13320F1D        # 资源包标签（打包时写入，自检用）
 
 IS_WIN = sys.platform == 'win32'
+IS_MAC = sys.platform == 'darwin'
 APP = 'ZhangguiPet'      # 程序的 ASCII 标识：配置文件夹、互斥量、自启项、日志都用它
 
 
@@ -37,6 +39,8 @@ def config_candidates():
             v = os.environ.get(var)
             if v:
                 out.append((kind, os.path.join(v, APP)))
+    elif IS_MAC:
+        out.append(('appdata', os.path.join(os.path.expanduser('~/Library/Application Support'), APP)))
     else:
         out.append(('appdata', os.path.join(os.environ.get('XDG_CONFIG_HOME') or os.path.expanduser('~/.config'), APP)))
     try:
@@ -70,6 +74,8 @@ def legacy_config_dirs():
             v = os.environ.get(var)
             if v:
                 out.append((kind, os.path.join(v, LEGACY_APP)))
+    elif IS_MAC:
+        out.append(('appdata', os.path.join(os.path.expanduser('~/Library/Application Support'), LEGACY_APP)))
     else:
         out.append(('appdata', os.path.join(os.environ.get('XDG_CONFIG_HOME') or os.path.expanduser('~/.config'), LEGACY_APP)))
     try:                                               # 便携模式：旧程序文件夹和新文件夹放在同一层时（比如 D:\ 下并排）
@@ -454,7 +460,28 @@ def idle_seconds():
         if ctypes.windll.user32.GetLastInputInfo(ctypes.byref(lii)):
             return ((ctypes.windll.kernel32.GetTickCount() - lii.dwTime) & 0xFFFFFFFF) / 1000.0
         return None
+    if IS_MAC:
+        return _mac_idle()
     return _x11_idle()
+
+
+_cg = None
+
+
+def _mac_idle():
+    """CGEventSourceSecondsSinceLastEventType(组合会话状态, 任意输入)：不需要辅助功能/录屏权限。"""
+    global _cg
+    if _cg is False:
+        return None
+    try:
+        if _cg is None:
+            _cg = ctypes.CDLL('/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices')
+            _cg.CGEventSourceSecondsSinceLastEventType.restype = ctypes.c_double
+            _cg.CGEventSourceSecondsSinceLastEventType.argtypes = [ctypes.c_int32, ctypes.c_uint32]
+        return float(_cg.CGEventSourceSecondsSinceLastEventType(0, 0xFFFFFFFF))   # kCGEventSourceStateCombinedSessionState, kCGAnyInputEventType
+    except Exception:
+        _cg = False
+        return None
 
 
 def _x11_idle():
@@ -574,6 +601,7 @@ def fullscreen_on_my_monitor(my_hwnd):
     if sim:
         return os.path.exists(sim)
     if not IS_WIN:
+        # macOS：全屏程序在自己的 Space 里；桌宠窗口没设 FullScreenAuxiliary，系统本来就不会把她叠在全屏程序上面。
         return False
     u, k, W, MONITORINFO = _win32()
     fg = u.GetForegroundWindow()
@@ -638,7 +666,31 @@ def _run_key_values():
     return out
 
 
+# macOS：~/Library/LaunchAgents/<MAC_AGENT_ID>.plist（只在用户勾选时写；取消就删掉，只删我们自己的这一个文件）
+MAC_AGENT_ID = 'local.ZhangguiPet'
+
+
+def _mac_agent_path():
+    return os.path.join(os.path.expanduser('~/Library/LaunchAgents'), MAC_AGENT_ID + '.plist')
+
+
+def _mac_program_args():
+    if getattr(sys, 'frozen', False):
+        exe = os.path.abspath(sys.executable)
+        i = exe.find('.app/Contents/MacOS/')
+        if i > 0:                                        # 打包成 .app：用 open 起，Dock/权限归属都按 .app 走
+            return ['/usr/bin/open', exe[:i + 4]]
+        return [exe]
+    return [sys.executable, os.path.abspath(sys.argv[0])]
+
+
+def autostart_supported():
+    return IS_WIN or IS_MAC
+
+
 def autostart_get():
+    if IS_MAC:
+        return os.path.exists(_mac_agent_path())
     if not IS_WIN:
         return False
     try:
@@ -665,6 +717,17 @@ def legacy_autostart():
 def autostart_set(on):
     """只在用户点「开机自动启动」时调用。顺手清掉旧版自己的那一项（同名且命令里带旧 exe/脚本名才删），
     免得开机时新旧两个一起起来。返回 True；清掉了旧项时返回 'legacy_removed'。"""
+    if IS_MAC:
+        import plistlib
+        path = _mac_agent_path()
+        if on:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, 'wb') as f:
+                plistlib.dump({'Label': MAC_AGENT_ID, 'ProgramArguments': _mac_program_args(),
+                               'RunAtLoad': True, 'ProcessType': 'Interactive'}, f)
+        elif os.path.exists(path):
+            os.remove(path)
+        return True
     if not IS_WIN:
         return False
     import winreg
@@ -689,7 +752,7 @@ def autostart_set(on):
 # ---------------- 预录语音播放（不依赖 QtMultimedia） ----------------
 class Voice:
     """assets/voice/<台词id>.wav（16-bit PCM）。按音量把采样缩放后写到配置目录的临时文件再播：
-    Windows 用自带的 winsound（异步），其他系统找 paplay/aplay/ffplay。没有语音文件就静默。"""
+    Windows 用自带的 winsound（异步），macOS 用系统自带 afplay，其他系统找 paplay/aplay/ffplay。没有语音文件就静默。"""
 
     def __init__(self, voice_dir, conf, log):
         self.dir = voice_dir
@@ -705,7 +768,9 @@ class Voice:
         if os.path.isdir(voice_dir):
             self.ids = {f[:-4] for f in os.listdir(voice_dir) if f.endswith('.wav')}
         self.player = None
-        if not IS_WIN:
+        if IS_MAC:
+            self.player = ['/usr/bin/afplay']
+        elif not IS_WIN:
             import shutil
             for p in (['paplay'], ['aplay', '-q'], ['ffplay', '-nodisp', '-autoexit', '-loglevel', 'quiet']):
                 if shutil.which(p[0]):

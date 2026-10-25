@@ -11,7 +11,7 @@
     （v0.3.6 起 biz/pout 的画面换了，名字不变，所以台词 id、语音方案都不用动；挥手最多停 4 秒就回待机。）
   - 冷却：这句说过之后多少秒内不再选它（避免复读）。
 """
-import datetime
+import datetime, sys
 from collections import namedtuple
 
 Line = namedtuple('Line', 'id text expr w cd')
@@ -88,7 +88,8 @@ LINES = {
         L('first01', '你好呀，我是文昭。以后就在你桌面上陪你啦，请多关照～', 'smile', 1, 0),
     ],
     'first_run_tip': [
-        L('first02', '右键我或者点右下角托盘里的我，就能调大小、静音这些哦。', 'thinking', 1, 0),
+        L('first02', ('右键我或者点屏幕顶上菜单栏里的我，就能调大小、静音这些哦。' if sys.platform == 'darwin' else
+                      '右键我或者点右下角托盘里的我，就能调大小、静音这些哦。'), 'thinking', 1, 0),
     ],
     'start_morning': [L('st_m01', '早上好～今天也一起加油吧！', 'biz'), L('st_m02', '早呀，吃早饭了吗？', 'smile')],
     'start_day': [L('st_d01', '我来啦～有事随时叫我。', 'smile'), L('st_d02', '嗯，今天也请多关照。', 'smug')],
@@ -215,7 +216,7 @@ SLOTS = [('slot_morning', 6.5, 9.5), ('slot_lunch', 11.5, 13.0), ('slot_tea', 15
          ('slot_dinner', 17.5, 19.0), ('slot_late', 23.0, 24.0), ('slot_deep', 0.5, 4.5)]
 
 DROP_EXT = {
-    'drop_exe': 'exe msi bat cmd ps1 scr com vbs jar apk dll sys',
+    'drop_exe': 'exe msi bat cmd ps1 scr com vbs jar apk dll sys dmg pkg command',
     'drop_lnk': 'lnk url',
     'drop_img': 'png jpg jpeg gif webp bmp heic tif tiff ico avif',
     'drop_psd': 'psd kra clip sai sai2 procreate xcf ai',

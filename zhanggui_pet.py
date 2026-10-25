@@ -53,6 +53,11 @@ def friendly_box(msg):
         if sys.platform == 'win32':
             import ctypes
             ctypes.windll.user32.MessageBoxW(None, msg, '掌柜台桌宠', 0x40 | 0x10000)   # 信息图标 + 置前
+        elif sys.platform == 'darwin':
+            import subprocess
+            subprocess.run(['/usr/bin/osascript', '-e', 'on run argv', '-e',
+                            'display dialog (item 1 of argv) with title "掌柜台桌宠" buttons {"好"} default button 1',
+                            '-e', 'end run', msg], timeout=600, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
             print(msg, file=sys.stderr)
     except Exception:
@@ -77,8 +82,8 @@ def _excepthook(et, ev, tb):
     friendly_box('她出门的时候被绊了一下，这次没能出来……\n\n'
                  f'原因：{short}\n\n'
                  + (f'详细记录放在这里啦：\n{path}\n\n' if path else '')
-                 + '如果装了安全软件，可以试试把 ZhangguiPet.exe 加进信任，再打开一次～\n'
-                   '把记录发给作者，也能帮她早点改好哦（记录里可能有文件夹路径，发之前可以先看一眼）。')
+                 + ('' if sys.platform == 'darwin' else '如果装了安全软件，可以试试把 ZhangguiPet.exe 加进信任，再打开一次～\n')
+                 + '把记录发给作者，也能帮她早点改好哦（记录里可能有文件夹路径，发之前可以先看一眼）。')
     os._exit(1)
 
 
@@ -93,6 +98,7 @@ from PySide6.QtWidgets import (QApplication, QWidget, QMenu, QSystemTrayIcon, QW
 
 import pet_lines as PL
 import pet_platform as P
+import pet_macos as MAC
 from pet_brain import LocalBrain
 
 BASE = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
@@ -566,6 +572,8 @@ class Pet(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
+        if P.IS_MAC:
+            self.setAttribute(Qt.WA_MacAlwaysShowToolWindow)    # Qt.Tool 在 macOS 默认会在 App 失去前台时藏起来
         self.setFocusPolicy(Qt.NoFocus)
         self.setAcceptDrops(True)
         self.setWindowTitle('掌柜台桌宠')
@@ -620,8 +628,10 @@ class Pet(QWidget):
         self.idle_since = time.time()
         self.badge_text = None
         self.font = QFont()
-        self.font.setFamilies(['Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC',
-                               'WenQuanYi Micro Hei', 'sans-serif'])
+        fams = ['Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', 'sans-serif']
+        if P.IS_MAC:                                    # 苹方放最前，省掉 Qt 找不到微软雅黑时的字体别名扫描
+            fams = ['PingFang SC', 'Hiragino Sans GB', 'Heiti SC', 'sans-serif']
+        self.font.setFamilies(fams)
         self.font.setBold(True)
         self.small = QFont(self.font); self.small.setPixelSize(13)
         # v0.3.9-nolegs：飘着/长脚共用同一个立绘大小（长脚的上半身和飘着的立绘像素一样大）。
@@ -991,6 +1001,11 @@ class Pet(QWidget):
     def hideEvent(self, e):
         self.cancel_interaction()
         super().hideEvent(e)
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        if P.IS_MAC:
+            MAC.tune_pet_window(self)
 
     def set_on_top(self, on):
         self.st['on_top'] = on; self.save_later()
@@ -1632,12 +1647,12 @@ class Pet(QWidget):
         act('计时器（番茄钟 / 正计时）…', self.open_panel)
         m.addSeparator()
         act('找回她（回到屏幕中间）', self.recenter)
-        if P.IS_WIN:
-            act('开机自动启动', self.toggle_autostart, checked=P.autostart_get())
+        if P.autostart_supported():
+            act('登录时自动启动' if P.IS_MAC else '开机自动启动', self.toggle_autostart, checked=P.autostart_get())
             if P.legacy_autostart() == 'ours':
                 act('（发现旧版的开机自启项：点上面这项时会一并清掉）', enabled=False)
         else:
-            act('开机自动启动（仅 Windows）', enabled=False)
+            act('开机自动启动（仅 Windows / macOS）', enabled=False)
         act('导出诊断日志', self.export_log)
         act('关于…', self.show_about)
         m.addSeparator()
@@ -1685,9 +1700,10 @@ class Pet(QWidget):
             self.show_bubble('托盘图标出不来，我先躲到屏幕边上啦～鼠标靠过来我就探头')
             self.log('hide -> peek (no tray)', side)
             return
-        self.show_bubble('我在右下角等你哦～')
+        self.show_bubble('我在菜单栏等你哦～' if P.IS_MAC else '我在右下角等你哦～')
         if self.tray:
-            self.tray.showMessage('我在这儿～', '点右下角托盘里的我就能叫我出来；没看到的话，点任务栏右边的 ^ 找找。',
+            self.tray.showMessage('我在这儿～', '点屏幕顶上菜单栏里的我，选「显示她」就能叫我出来。' if P.IS_MAC else
+                                  '点右下角托盘里的我就能叫我出来；没看到的话，点任务栏右边的 ^ 找找。',
                                   self.tray_icon, 5000)
         self.hide_pending = True
         QTimer.singleShot(1400, self._do_hide)            # 先让她把话说完再藏
@@ -1784,7 +1800,7 @@ class Pet(QWidget):
             self.log('no system tray; right-click her for the menu')
             return
         self.tray = QSystemTrayIcon(self.tray_icon, self)
-        self.tray.setToolTip(f'掌柜台桌宠 v{VERSION}\n{CREDIT}\n单击：显示/藏起来　右键：设置')
+        self.tray.setToolTip(f'掌柜台桌宠 v{VERSION}\n{CREDIT}\n' + ('点一下：打开菜单' if P.IS_MAC else '单击：显示/藏起来　右键：设置'))
         self.tray_menu = QMenu()
         self.tray_menu.aboutToShow.connect(lambda: self.fill_menu(self.tray_menu))
         self.fill_menu(self.tray_menu)
@@ -1818,7 +1834,7 @@ class Pet(QWidget):
                 QTimer.singleShot(18000, note)
 
     def on_tray(self, reason):
-        if reason == QSystemTrayIcon.Trigger:
+        if reason == QSystemTrayIcon.Trigger and not P.IS_MAC:     # macOS：点菜单栏图标就是弹菜单，菜单里有「显示她/先藏起来」
             self.toggle_hidden()
 
     # ---------- 每秒一次：主动行为 ----------
@@ -1974,7 +1990,8 @@ class Pet(QWidget):
             self.say('first_run')
             QTimer.singleShot(6500, lambda: self.say('first_run_tip'))
             if self.tray:
-                self.tray.showMessage('掌柜台桌宠', '我在右下角托盘里～右键可以调大小、静音、开计时器。', self.tray_icon, 6000)
+                self.tray.showMessage('掌柜台桌宠', '我在屏幕顶上的菜单栏里～点我可以调大小、静音、开计时器。' if P.IS_MAC else
+                                      '我在右下角托盘里～右键可以调大小、静音、开计时器。', self.tray_icon, 6000)
             self.st['first_run_done'] = True
             self.save_later()
         else:
@@ -2120,6 +2137,8 @@ def main():
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     app.setApplicationName(P.APP)
+    if P.IS_MAC:
+        MAC.hide_dock_icon()
     lock = P.SingleInstance(conf, log)
     if not lock.acquire():
         # 已经开着了：叫她出来打招呼，自己退出
