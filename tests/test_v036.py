@@ -460,10 +460,12 @@ class T4_Expr(unittest.TestCase):
 
 class T5_Version(unittest.TestCase):
     def test_version(self):
-        self.assertEqual(Z.VERSION, '0.3.9')
-        for f in ('README.md', 'CHANGELOG.md'):
-            self.assertIn('0.3.9', open(os.path.join(ROOT, f), encoding='utf-8').read(), f)
-        self.assertIn('0.3.9', open(os.path.join(ROOT, 'packaging', 'version_info.txt'), encoding='utf-8').read())
+        self.assertEqual(Z.VERSION, '0.3.10')
+        for f in ('README.md', 'CHANGELOG.md', '说明.txt'):
+            self.assertIn('0.3.10', open(os.path.join(ROOT, f), encoding='utf-8-sig').read(), f)
+        info = open(os.path.join(ROOT, 'packaging', 'version_info.txt'), encoding='utf-8').read()
+        self.assertIn('0.3.10', info)
+        self.assertNotIn('0.3.9', info)
 
     def test_no_bad_strings(self):
         for f in ('zhanggui_pet.py', 'pet_lines.py', 'README.md', 'CHANGELOG.md'):

@@ -4,7 +4,7 @@
 # Everything (build cache, temp files, output) stays inside the source folder, so nothing is written to C:.
 param(
     [Parameter(Mandatory = $true)][string]$Python,
-    [string]$Version = '0.3.9',
+    [string]$Version = '0.3.10',
     [switch]$RunTests
 )
 $ErrorActionPreference = 'Stop'

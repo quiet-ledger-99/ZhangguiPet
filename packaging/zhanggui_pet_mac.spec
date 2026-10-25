@@ -3,7 +3,7 @@
 # 图标 build/ZhangguiPet.icns 由 build_mac.sh 从 assets/icon.png 现做（不进仓库）。
 import os
 ROOT = os.path.abspath(os.path.join(SPECPATH, '..'))
-VERSION = os.environ.get('ZGP_VERSION', '0.3.9')
+VERSION = os.environ.get('ZGP_VERSION', '0.3.10')
 ICNS = os.path.join(ROOT, 'build', 'ZhangguiPet.icns')
 
 a = Analysis(

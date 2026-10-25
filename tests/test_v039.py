@@ -73,14 +73,15 @@ class Art(unittest.TestCase):
         self.assertIn("'huff': ('huff_f', 'clip')", tool)
 
     def test_04_version(self):
-        self.assertEqual(Z.VERSION, '0.3.9')
+        self.assertEqual(Z.VERSION, '0.3.10')
         ps = (ROOT / 'packaging/build_win.ps1').read_text(encoding='utf-8')
-        self.assertIn("[string]$Version = '0.3.9'", ps)
+        self.assertIn("[string]$Version = '0.3.10'", ps)
         self.assertIn('tests\\test_v039.py', ps)
         info = (ROOT / 'packaging/version_info.txt').read_text(encoding='utf-8')
-        self.assertEqual(info.count('(0, 3, 9, 0)'), 2)
-        for f in ('README.md', 'CHANGELOG.md'):
-            self.assertIn('0.3.9', (ROOT / f).read_text(encoding='utf-8'), f)
+        self.assertEqual(info.count('(0, 3, 10, 0)'), 2)
+        self.assertNotIn('0.3.9', info)
+        for f in ('README.md', 'CHANGELOG.md', '说明.txt'):
+            self.assertIn('0.3.10', (ROOT / f).read_text(encoding='utf-8-sig'), f)
 
 
 class Playback(unittest.TestCase):

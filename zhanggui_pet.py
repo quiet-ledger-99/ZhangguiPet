@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""掌柜台桌宠 v0.3.9 —— 非官方粉丝二创，与阿里巴巴及通义千问无隶属或合作关系；含 AI 生成内容（详见 README「署名与授权」）。
+"""掌柜台桌宠 v0.3.10 —— 非官方粉丝二创，与阿里巴巴及通义千问无隶属或合作关系；含 AI 生成内容（详见 README「署名与授权」）。
 完全离线：不联网、不要任何 key、不监听键盘、不打开/移动/删除你的文件。
 依赖：PySide6（Essentials 即可）。运行：python zhanggui_pet.py
 台词在 pet_lines.py；系统相关（设置、全屏检测、空闲时间、自启、语音）在 pet_platform.py；
 “说什么”的接口在 pet_brain.py（v0.4 的可选联网聊天/TTS 从这里接）。"""
 import os, sys, json, random, time, datetime, traceback, math
 
-VERSION = '0.3.9'
+VERSION = '0.3.10'
 _BUILD_SIG = 0x13320F1D        # 构建签名（资源完整性）
 
 
