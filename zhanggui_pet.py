@@ -1804,7 +1804,10 @@ class Pet(QWidget):
         self.tray_menu = QMenu()
         self.tray_menu.aboutToShow.connect(lambda: self.fill_menu(self.tray_menu))
         self.fill_menu(self.tray_menu)
-        self.tray.setContextMenu(self.tray_menu)
+        if not P.IS_MAC:
+            # macOS 27 + Qt 6.10：把菜单交给菜单栏图标（setContextMenu）后，一点图标 Qt 就抛 NSException 整个闪退
+            # （菜单开始跟踪时对非鼠标事件调用了 clickCount）。Mac 上改成自己在图标下面弹同一个菜单，见 on_tray。
+            self.tray.setContextMenu(self.tray_menu)
         self.tray.activated.connect(self.on_tray)
         self.tray.show()
         self.tray_ok = self.tray.isVisible() and not self.low_integrity()
@@ -1834,7 +1837,12 @@ class Pet(QWidget):
                 QTimer.singleShot(18000, note)
 
     def on_tray(self, reason):
-        if reason == QSystemTrayIcon.Trigger and not P.IS_MAC:     # macOS：点菜单栏图标就是弹菜单，菜单里有「显示她/先藏起来」
+        if P.IS_MAC:                                   # macOS：点菜单栏图标就弹菜单（菜单里有「显示她/先藏起来」）
+            if reason in (QSystemTrayIcon.Trigger, QSystemTrayIcon.Context, QSystemTrayIcon.DoubleClick):
+                g = self.tray.geometry()
+                self.tray_menu.popup(QPoint(g.left(), g.bottom() + 4))
+            return
+        if reason == QSystemTrayIcon.Trigger:
             self.toggle_hidden()
 
     # ---------- 每秒一次：主动行为 ----------

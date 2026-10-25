@@ -30,7 +30,7 @@ cd src && ../.venv/bin/python zhanggui_pet.py
 | 语音 | `winsound` | `/usr/bin/afplay`（发布包里没有语音包，所以日志是 `voice none`，属正常） |
 | 低权限目录检测（integrity level） | Windows 专用 | 不适用（日志显示 `integrity ?`） |
 | 字体 | 微软雅黑 | 苹方 PingFang SC 放第一（省掉 Qt 找不到雅黑时 100ms 的字体别名扫描） |
-| 托盘 | 右下角通知区，单击显示/隐藏 | 菜单栏 NSStatusItem；macOS 上单击就是弹菜单，所以单击不再切换显示，菜单里本来就有“显示她/先藏起来”；所有“右下角托盘”文案在 Mac 上改成“菜单栏” |
+| 托盘 | 右下角通知区，单击显示/隐藏 | 菜单栏 NSStatusItem；macOS 上单击就是弹菜单，所以单击不再切换显示，菜单里本来就有“显示她/先藏起来”；Mac 上**不用** `setContextMenu`（macOS 27 + Qt 6.10.3 下一点图标就抛 NSException 闪退：菜单开始跟踪时 Qt 对 KitDefined 事件调了 `clickCount`），改成 `activated` 里自己 `tray_menu.popup()` 在图标下方；所有“右下角托盘”文案在 Mac 上改成“菜单栏” |
 | Dock 图标 | 无（Qt.Tool） | `pet_macos.hide_dock_icon()`：NSApp `setActivationPolicy:Accessory`；打包时 Info.plist `LSUIElement` |
 | 窗口 | Frameless+Tool+StaysOnTop | 同上 + `WA_MacAlwaysShowToolWindow`（不然 App 失去前台就藏）+ `pet_macos.tune_pet_window`：所有 Space 可见、Stationary、不进 Cmd+` 轮换、`setHidesOnDeactivate:NO`。每次 showEvent 重新设置（切置顶会重建原生窗口） |
 | 拖进来的“程序”文件 | exe msi bat … | 另外认 dmg pkg command |
