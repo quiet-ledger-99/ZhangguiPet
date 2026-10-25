@@ -90,7 +90,7 @@ def _excepthook(et, ev, tb):
 sys.excepthook = _excepthook
 from collections import OrderedDict
 from PySide6.QtCore import (Qt, QTimer, QPoint, QRect, QRectF, QPointF, QPropertyAnimation,
-                            QEasingCurve, QUrl, qVersion)
+                            QEasingCurve, QUrl, QEvent, qVersion)
 from PySide6.QtGui import (QImage, QPainter, QRegion, QBitmap, QFont, QFontMetrics, QColor, QPainterPath, QPen,
                            QAction, QActionGroup, QGuiApplication, QIcon, QCursor, QDesktopServices)
 from PySide6.QtWidgets import (QApplication, QWidget, QMenu, QSystemTrayIcon, QWidgetAction, QSlider, QLabel,
@@ -112,7 +112,7 @@ PEEKD = os.path.join(BASE, 'assets', 'peek')             # 躲屏幕边的立绘
 PEEK_FADE = 0.15                                          # 害羞 <-> 探头 的淡入淡出秒数（上/下边是同样时长的滑动）
 PEEK_SIDES = ('left', 'right', 'top', 'bottom')
 PEEK_TB = ('top', 'bottom')                               # 上/下边：只有一张探头图，害羞 = 同一张图往屏幕外缩回去一截
-PEEK_RETRACT = {'top': 64, 'bottom': 35}                  # 缩回去多少（251x380 画布上的像素），assets/peek/peek.json 可覆盖
+PEEK_RETRACT = {'top': 64, 'bottom': 35}                  # 缩回去多少（251x380 逻辑像素），assets/peek/peek.json 可覆盖；@2x 按同样的逻辑像素平移
 PEEK_BOTTOM_PAST = 0.2                                    # 往下拖过可用区域底边（任务栏上沿）这么多（身高比例）才算「躲到下边」
 PEEK_BOTTOM_SEAL_PX = 0                                 # 不要整体下压立绘进任务栏（曾切下巴）；空隙只靠清 soft
 PEEK_ENABLE_TOP = False                                   # 周日发布版先关掉上方探头；tilt_top 等素材保留，以后改 True 即可再开
@@ -387,8 +387,44 @@ class Sprites:
         for k in [k for k in self.cache if k[0] != 'idle']:
             self.bytes -= self.cache.pop(k).sizeInBytes()
 
+    def peek_dpr(self):
+        """绘制躲边图时用的屏幕缩放。1 = 只用 251×380（或长脚画布）那套。"""
+        return getattr(self, 'dpr', 1.0)
+
+    def set_dpr(self, dpr):
+        """屏幕缩放变了就丢掉躲边缓存。返回值表示确实变了。"""
+        try:
+            dpr = max(1.0, float(dpr))
+        except (TypeError, ValueError):
+            dpr = 1.0
+        old = self.peek_dpr()
+        self.dpr = dpr
+        if abs(old - dpr) < 0.01:
+            return False
+        self.peek_cache.clear()
+        for k in list(getattr(self, 'masks', {})):
+            if isinstance(k, tuple) and k and k[0] == 'peek':
+                del self.masks[k]
+        return True
+
+    def peek_hidpi_path(self, pose, side):
+        """需要比 1x 画布更多像素时用 @2x（飘着是 502×760）。没有文件就返回 None，长脚因此仍走原来的图。"""
+        path = os.path.join(self.peekd, '@2x', f'{pose}_{side}.png')
+        if not os.path.isfile(path):
+            return None
+        if self.peek_dpr() > 1.01 or self.sw > self.w or self.sh > self.h:
+            return path
+        return None
+
+    def peek_target_px(self, hidpi):
+        """hidpi 时目标是屏幕像素（逻辑尺寸 × dpr），否则就是窗口里的逻辑尺寸。"""
+        if not hidpi:
+            return self.sw, self.sh
+        dpr = max(1.0, self.peek_dpr())
+        return max(1, round(self.sw * dpr)), max(1, round(self.sh * dpr))
+
     def peek_retract(self, side):
-        """上/下边「害羞」时整张图往屏幕外缩回去多少像素（当前大小）"""
+        """上/下边「害羞」时整张图往屏幕外缩回去多少像素（当前大小，逻辑像素）"""
         if not hasattr(self, '_retract'):
             self._retract = dict(PEEK_RETRACT)
             try:
@@ -399,11 +435,13 @@ class Sprites:
         return round(self._retract.get(side, 0) * self.s)
 
     def peek_shifted(self, side, frac):
-        """上/下边：探头图往屏幕外缩回 frac（0=探头，1=害羞）后的样子，墙外的部分裁掉"""
+        """上/下边：探头图往屏幕外缩回 frac（0=探头，1=害羞）后的样子，墙外的部分裁掉。
+        高清图按像素平移，量跟逻辑像素 retract 对齐，贴边不会多缩一截。"""
         src = self.peek_img('tilt', side)
         if src is None:
             return None
-        d = round(self.peek_retract(side) * frac) * (-1 if side == 'top' else 1)
+        d_logical = round(self.peek_retract(side) * frac) * (-1 if side == 'top' else 1)
+        d = int(round(d_logical * src.height() / float(self.sh)))
         if d == 0:
             return src
         im = QImage(src.size(), QImage.Format_ARGB32_Premultiplied); im.fill(Qt.transparent)
@@ -411,29 +449,43 @@ class Sprites:
         return im
 
     def peek_img(self, pose, side):
-        """当前素材集的躲边立绘（屏幕边 = 画布右/左/上/下边），按当前大小缩放；读不到返回 None。
+        """当前素材集的躲边立绘（屏幕边 = 画布右/左/上/下边）；读不到返回 None。
+        100% 且原始大小用 1x。屏幕缩放大于 1，或立绘放大超过 1x 画布时，改读 @2x，
+        缓存的是屏幕像素尺寸，不缩回 251。画的时候再铺进 sw×sh 的逻辑框，贴边位置不变。
         上/下边只有 tilt_top / tilt_bottom 一张图，害羞那张由它往屏幕外缩回去得到。"""
         k = (pose, side)
         if k not in self.peek_cache:
             if side in PEEK_TB and pose == 'shy':
                 self.peek_cache[k] = self.peek_shifted(side, 1.0)
                 return self.peek_cache[k]
-            im = QImage(os.path.join(self.peekd, f'{pose}_{side}.png'))
+            hi = self.peek_hidpi_path(pose, side)
+            lo = os.path.join(self.peekd, f'{pose}_{side}.png')
+            im = QImage(hi or lo)
+            if im.isNull() and hi:
+                im = QImage(lo)
+                hi = None
             if im.isNull():
                 self.peek_cache[k] = None
             else:
                 im = im.convertToFormat(QImage.Format_ARGB32_Premultiplied)
-                if (im.width(), im.height()) != (self.sw, self.sh):
-                    im = im.scaled(self.sw, self.sh, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+                tw, th = self.peek_target_px(bool(hi))
+                if (im.width(), im.height()) != (tw, th):
+                    im = im.scaled(tw, th, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
                 self.peek_cache[k] = im
         return self.peek_cache[k]
 
     def peek_mask(self, pose, side):
+        """点击和贴边用的遮罩，始终是逻辑像素（sw×sh）。高清图先缩回逻辑尺寸再取 alpha。"""
         key = ('peek', pose, side)
         r = self.masks.get(key)
         if r is None:
             im = self.peek_img(pose, side)
-            r = QRegion(QBitmap.fromImage(im.createAlphaMask())) if im is not None else QRegion(0, 0, self.sw, self.sh)
+            if im is None:
+                r = QRegion(0, 0, self.sw, self.sh)
+            else:
+                if im.width() != self.sw or im.height() != self.sh:
+                    im = im.scaled(self.sw, self.sh, Qt.IgnoreAspectRatio, Qt.FastTransformation)
+                r = QRegion(QBitmap.fromImage(im.createAlphaMask()))
             self.masks[key] = r
         return r
 
@@ -933,6 +985,7 @@ class Pet(QWidget):
         return QPoint(p.x() - self.ox, p.y() - self.oy)
 
     def apply_peek(self, side, animate=True, out=False):
+        self.sync_peek_dpr()
         self.peek, self.peek_out = side, out
         self.peek_fade = None; self.peek_drawn = None; self.mask_key = None
         if not out:
@@ -1041,10 +1094,39 @@ class Pet(QWidget):
         self.cancel_interaction()
         super().hideEvent(e)
 
+    def sync_peek_dpr(self):
+        """跟当前屏幕的缩放。窗口还没显示时用主屏，避免 Retina 上第一帧先画成 251。"""
+        if self.windowHandle() is not None:
+            dpr = float(self.devicePixelRatioF() or 1.0)
+        else:
+            scr = QGuiApplication.primaryScreen()
+            dpr = float(scr.devicePixelRatio() if scr is not None else 1.0)
+        changed = self.sp.set_dpr(dpr)
+        if changed:
+            self.peek_fade = None
+            self.peek_drawn = None
+            self.mask_key = None
+            self.last_img = None
+            self.cur_img = None
+        return changed
+
     def showEvent(self, e):
         super().showEvent(e)
+        if getattr(self, 'sp', None) is not None and self.sync_peek_dpr() and self.peek and self.peek_art_ok():
+            self.compose()
         if P.IS_MAC:
             MAC.tune_pet_window(self)
+
+    def moveEvent(self, e):
+        super().moveEvent(e)
+        if getattr(self, 'sp', None) is not None and self.sync_peek_dpr() and self.peek and self.isVisible():
+            self.compose()
+
+    def changeEvent(self, e):
+        super().changeEvent(e)
+        if (getattr(self, 'sp', None) is not None and e.type() == QEvent.DevicePixelRatioChange
+                and self.sync_peek_dpr() and self.peek and self.isVisible()):
+            self.compose()
 
     def set_on_top(self, on):
         self.st['on_top'] = on; self.save_later()
@@ -1155,6 +1237,8 @@ class Pet(QWidget):
 
     def compose(self):
         sp = self.sp
+        if self.peek:
+            self.sync_peek_dpr()
         if self.peek and self.peek_art_ok():
             state = (self.peek_key(), self.peek_fade is not None)
             if state == self.peek_drawn and self.peek_fade is None and self.cur_img is not None:
@@ -1250,6 +1334,28 @@ class Pet(QWidget):
     def sprite_local(self):
         return QRect(self.ox, self.oy, self.sp.sw, self.sp.sh)
 
+    def draw_sprite(self, p):
+        """立绘画进逻辑框 sw×sh。1x 图走原来的逐像素覆盖；高清图铺进同一个框，贴边不跟着变大。"""
+        img = self.cur_img
+        if img is None:
+            return
+        sw, sh = self.sp.sw, self.sp.sh
+        if img.width() == sw and img.height() == sh:
+            p.drawImage(self.ox, self.oy, img)
+            return
+        target = QRectF(self.ox, self.oy, sw, sh)
+        dev = p.device()
+        dpr = float(dev.devicePixelRatioF() or 1.0) if dev is not None else 1.0
+        user = p.transform()
+        straight = not user.isRotating() and not user.isScaling()
+        exact = straight and img.width() == max(1, round(sw * dpr)) and img.height() == max(1, round(sh * dpr))
+        hint = p.testRenderHint(QPainter.SmoothPixmapTransform)
+        if not exact:
+            p.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        p.drawImage(target, img)
+        if not exact:
+            p.setRenderHint(QPainter.SmoothPixmapTransform, hint)
+
     def bubble_rect(self):
         k = (self.bubble[0], self.x(), self.y(), self.W, self.font.pixelSize(), self.peek, self.sp.sw)
         if self.bubble_cache and self.bubble_cache[0] == k:
@@ -1335,8 +1441,7 @@ class Pet(QWidget):
             p.setRenderHint(QPainter.SmoothPixmapTransform)
             pv = QPointF(self.ox + self.sp.ux + self.sp.uw / 2, self.oy + self.sp.uy + self.sp.uh * 0.1)
             p.save(); p.translate(pv); p.rotate(self.angle); p.translate(-pv)
-            if self.cur_img is not None:
-                p.drawImage(self.ox, self.oy, self.cur_img)
+            self.draw_sprite(p)
         else:
             # 角色那块直接整块覆盖（Source 模式比逐像素混合快），其余区域清成透明
             sr = self.sprite_local()
@@ -1345,8 +1450,7 @@ class Pet(QWidget):
                 p.setClipRegion(QRegion(clip).subtracted(QRegion(sr)))
                 p.fillRect(self.rect(), Qt.transparent)
                 p.setClipping(False)
-            if self.cur_img is not None:
-                p.drawImage(self.ox, self.oy, self.cur_img)
+            self.draw_sprite(p)
             p.setCompositionMode(QPainter.CompositionMode_SourceOver)
         p.setRenderHint(QPainter.Antialiasing)
         now = time.time()

@@ -5,7 +5,7 @@
 离开 2.5 秒缩回、气泡/计时牌位置、关掉「只露半身」就不躲）；上方探头发布版默认关闭（拖到上边不进 peek，素材保留）；表情 biz/pout 换成 wave/huff 且挥手不会一直挥；
 旧的递包素材不再发布；素材尺寸/遮罩/清单一致；边缘去青边统计；版本号。
 Windows 真机（真实多屏、混合 DPI、任务栏在左/右/上）这里用假屏幕几何模拟，最终还要真机看一眼。"""
-import os, sys, json, time, tempfile, unittest
+import hashlib, os, sys, json, time, tempfile, unittest
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 os.environ['ZHANGGUI_PET_NO_AUDIO'] = '1'; os.environ['ZHANGGUI_PET_NO_OPEN'] = '1'; os.environ['ZHANGGUI_PET_NO_DIALOG'] = '1'
 os.environ.pop('ZHANGGUI_PET_DEBUG', None); os.environ.pop('ZHANGGUI_PET_ORDER', None)
@@ -19,8 +19,8 @@ sys.path.insert(0, ROOT)
 import zhanggui_pet as Z
 import pet_platform as P
 from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QImage
-from PySide6.QtCore import QPoint, QRect
+from PySide6.QtGui import QImage, QPainter
+from PySide6.QtCore import QPoint, QRect, Qt
 
 app = QApplication.instance() or QApplication([])
 A = os.path.join(ROOT, 'assets')
@@ -315,6 +315,127 @@ class T3_PetTopBottom(unittest.TestCase):
             self.assertTrue(vis.contains(pet.badge_rect()), side)
             pet.badge_text = None
             pet.bubble = None; pet.bubble_cache = None
+
+
+# 交回 A（251×380 右侧）和 B（502×760 六张，含 shy_right）的文件哈希
+PEEK_SHA = {
+    'shy_right.png': '734a7fc8884f44b7a48ab493d7003713db8231d1bf3b6734ee8011c7df90d337',
+    'tilt_right.png': '06d7b8cd74756185c168c9c5bb6911b285fea4957c769c4e546442a5d9674629',
+    '@2x/shy_left.png': '1b4237c72595db647b7c5b7c9275549f138b7264118a2bc9e837cc5310466810',
+    '@2x/shy_right.png': '670a59ddca06a8de2bf426b80da0a92fa2842dd7577da864bb201c150305eb2f',
+    '@2x/tilt_left.png': 'de3139a9adf645c193cc40164c793852b93296e0a484b6e8e27d277b7a5ee592',
+    '@2x/tilt_right.png': '85c9feefad45bdfce819a60f5db6163dd533320e439061a227b862bf25bdfc51',
+    '@2x/tilt_top.png': '3afdb4f83588c9bd94f746c7eaa62e42031404ef4faf0ef36672e4cf6d93beb4',
+    '@2x/tilt_bottom.png': '8093dd7d0bda26dd9cbdb28d72535c60381cddb5bc8e1de213bec18a0aee779e',
+}
+
+
+def rgba_bytes(im):
+    im = im.convertToFormat(QImage.Format_RGBA8888)
+    bpl, w = im.bytesPerLine(), im.width()
+    raw = bytes(im.constBits())
+    return b''.join(raw[y * bpl:y * bpl + w * 4] for y in range(im.height()))
+
+
+class T6_HidpiPeek(unittest.TestCase):
+    def test_files_are_the_returned_set(self):
+        for rel, sha in PEEK_SHA.items():
+            p = os.path.join(A, 'peek', rel)
+            self.assertTrue(os.path.isfile(p), rel)
+            with open(p, 'rb') as f:
+                self.assertEqual(hashlib.sha256(f.read()).hexdigest(), sha, rel)
+            im = QImage(p)
+            if rel.startswith('@2x/'):
+                self.assertEqual((im.width(), im.height()), (502, 760), rel)
+            else:
+                self.assertEqual((im.width(), im.height()), (251, 380), rel)
+
+    def test_dpr1_right_uses_new_1x_not_2x_buffer(self):
+        sp = Z.Sprites(False)
+        self.assertEqual(sp.peek_dpr(), 1.0)
+        for pose in ('shy', 'tilt'):
+            im = sp.peek_img(pose, 'right')
+            self.assertEqual((im.width(), im.height()), (251, 380), pose)
+            src = QImage(os.path.join(A, 'peek', f'{pose}_right.png')).convertToFormat(QImage.Format_ARGB32_Premultiplied)
+            self.assertEqual(rgba_bytes(im), rgba_bytes(src), pose)
+
+    def test_dpr2_uses_502_bitmap_and_logical_mask(self):
+        sp = Z.Sprites(False)
+        sp.set_scale(1.0)
+        self.assertTrue(sp.set_dpr(2))
+        self.assertEqual((sp.sw, sp.sh), (251, 380))
+        for pose, side in (('shy', 'left'), ('shy', 'right'), ('tilt', 'left'), ('tilt', 'right'),
+                           ('tilt', 'top'), ('tilt', 'bottom')):
+            im = sp.peek_img(pose, side)
+            self.assertEqual((im.width(), im.height()), (502, 760), f'{pose}_{side}')
+            src = QImage(os.path.join(A, 'peek', '@2x', f'{pose}_{side}.png')).convertToFormat(QImage.Format_ARGB32_Premultiplied)
+            self.assertEqual(rgba_bytes(im), rgba_bytes(src), f'{pose}_{side} 应是 @2x 原图像素，不是 251 放大')
+        for side in ('top', 'bottom'):
+            shy = sp.peek_img('shy', side)
+            self.assertEqual((shy.width(), shy.height()), (502, 760), f'shy_{side}')
+            rect = sp.peek_mask(pose, side).boundingRect()
+            self.assertGreaterEqual(rect.left(), 0)
+            self.assertGreaterEqual(rect.top(), 0)
+            self.assertLess(rect.right(), sp.sw, f'{pose}_{side}')
+            self.assertLess(rect.bottom(), sp.sh, f'{pose}_{side}')
+        # 墙边仍贴着逻辑画布，不能因为高清把人缩进半格
+        self.assertEqual(sp.peek_mask('tilt', 'right').boundingRect().right(), sp.sw - 1)
+        self.assertEqual(sp.peek_mask('tilt', 'left').boundingRect().left(), 0)
+        self.assertEqual(sp.peek_mask('tilt', 'top').boundingRect().top(), 0)
+        self.assertEqual(sp.peek_mask('tilt', 'bottom').boundingRect().bottom(), sp.sh - 1)
+        shy = sp.peek_mask('shy', 'bottom').boundingRect()
+        tilt = sp.peek_mask('tilt', 'bottom').boundingRect()
+        self.assertLess(shy.height(), tilt.height() - 20)
+        self.assertEqual(shy.bottom(), sp.sh - 1)
+        # 跟把 1x 放大到 502 不是同一张图
+        blown = QImage(os.path.join(A, 'peek', 'tilt_right.png')).scaled(502, 760, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+        hi = sp.peek_img('tilt', 'right')
+        diff = sum(a != b for a, b in zip(rgba_bytes(hi), rgba_bytes(blown)))
+        self.assertGreater(diff, 1000, '高清缓冲不应只是旧 251 的放大')
+
+    def test_enlarged_at_dpr1_scales_from_2x(self):
+        """100% 屏幕但立绘放大超过 1x 画布时，用 @2x 缩小，而不是把 251 放大。"""
+        sp = Z.Sprites(False)
+        sp.set_scale(1.5)
+        self.assertGreater(sp.sw, sp.w)
+        im = sp.peek_img('tilt', 'right')
+        self.assertEqual((im.width(), im.height()), (sp.sw, sp.sh))
+        src = QImage(os.path.join(A, 'peek', '@2x', 'tilt_right.png')).convertToFormat(QImage.Format_ARGB32_Premultiplied)
+        src = src.scaled(sp.sw, sp.sh, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+        self.assertEqual(rgba_bytes(im), rgba_bytes(src))
+
+    def test_dpr2_draw_and_place_stay_on_logical_canvas(self):
+        pet = make_pet([SCR])
+        pet.screen_of = lambda pt: SCR
+        # 离屏 dpr 是 1；这里钉住 2，避免 apply_peek / compose 又读回窗口缩放
+        pet.sync_peek_dpr = lambda: False
+        pet.sp.set_dpr(2)
+        pet.apply_peek('right', animate=False)
+        pet.compose()
+        self.assertEqual((pet.cur_img.width(), pet.cur_img.height()), (502, 760))
+        self.assertEqual((pet.sprite_rect().width(), pet.sprite_rect().height()), (251, 380))
+        # 右缘仍贴可用区域右缘（peek_place 的 +2 再减 1）
+        self.assertEqual(pet.sprite_rect().right(), SCR.avail.right() + 1)
+        canvas = QImage(502, 760, QImage.Format_ARGB32_Premultiplied)
+        canvas.setDevicePixelRatio(2)
+        canvas.fill(Qt.transparent)
+        p = QPainter(canvas)
+        ox, oy = pet.ox, pet.oy
+        pet.ox, pet.oy = 0, 0
+        pet.draw_sprite(p)
+        pet.ox, pet.oy = ox, oy
+        p.end()
+        # 画进逻辑框后，设备像素应仍是 @2x 那张，而不是先缩成 251
+        self.assertEqual((canvas.width(), canvas.height()), (502, 760))
+        self.assertEqual(rgba_bytes(canvas), rgba_bytes(pet.cur_img))
+        pet.close()
+
+    def test_legs_have_no_2x_peek(self):
+        sp = Z.Sprites(True)
+        sp.set_dpr(2)
+        im = sp.peek_img('tilt', 'right')
+        self.assertEqual((im.width(), im.height()), (sp.sw, sp.sh))
+        self.assertNotEqual((im.width(), im.height()), (502, 760))
 
 
 class T4_Expr(unittest.TestCase):
