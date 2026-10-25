@@ -126,7 +126,7 @@ spec 里已经写好排除的 Qt 模块、图标和 exe 版本信息（产品名
 | `pet_platform.py` | 设置、日志、空闲时间、全屏检测、开机自启、语音播放 |
 | `pet_brain.py` | 选台词（冷却 + 权重）；v0.4 联网模块的接口说明 |
 | `assets/sprites/` | 透明精灵帧（251×380，12fps，432 帧；`tools/export_sprites.py` 导出） |
-| `assets/peek/` | 躲屏幕边的立绘：左右各两张（害羞 / 探头），上、下各一张探头图（害羞 = 程序里往屏幕外缩回去一截，缩多少见 `peek.json`） |
+| `assets/peek/` | 躲屏幕边的立绘（251×380）：左右各两张（害羞 / 探头），上、下各一张探头图（害羞往屏幕外缩，见 `peek.json`）。`@2x/` 是同一套 502×760，屏幕缩放大于 100% 时用，贴边仍按 251×380 |
 | `assets/masks/` | 每段动画的并集遮罩（`tools/make_assets.py` 生成） |
 | `assets/icon.png / icon.ico` | 托盘和 exe 图标（位图） |
 | `assets/voice/` | 可选离线语音包（主包默认只有说明，不含 128 句；见该目录 README） |

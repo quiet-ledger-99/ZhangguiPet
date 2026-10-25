@@ -37,7 +37,7 @@ A = ROOT / 'assets'
 W, H, SOLE_Y, FOOT_X = 375, 614, 600, 187.5
 ANIMS = ('idle', 'smile', 'smug', 'thinking', 'smug_hold', 'thinking_hold', 'wave', 'huff')
 # assets/sprites、masks、peek、fx（飘着模式用的全部素材）的合并哈希：v0.3.9 发布包合并哈希（含发布处理）
-FLOAT_ASSETS_SHA = '2203cf66593a2195f1d53a9e40c0dd3a19e051e4fbd7ec22b58825f84bc951e9'  # nolegs v8：peek/tilt_right 换成 v8 右侧躲边图
+FLOAT_ASSETS_SHA = '2efffe4d51707290e777f0d6aa8bc17ea8bac63522b5df1c27903621e2cc93b4'  # 飘着躲边：右侧 1x 换成交回 A，@2x 接入 B 的 502×760
 
 
 class Alpha:
