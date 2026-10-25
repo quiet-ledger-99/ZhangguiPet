@@ -5,7 +5,7 @@
 依赖：PySide6（Essentials 即可）。运行：python zhanggui_pet.py
 台词在 pet_lines.py；系统相关（设置、全屏检测、空闲时间、自启、语音）在 pet_platform.py；
 “说什么”的接口在 pet_brain.py（v0.4 的可选联网聊天/TTS 从这里接）。"""
-import os, sys, json, random, time, datetime, traceback
+import os, sys, json, random, time, datetime, traceback, math
 
 VERSION = '0.3.9'
 _BUILD_SIG = 0x13320F1D        # 构建签名（资源完整性）
@@ -171,9 +171,48 @@ MICRO_NAMES = [('off', '关'), ('low', '偶尔（4～8 分钟）'), ('mid', '适
 # 同一秒有好几件事想说时的优先级（数字小的先说）
 PRIO_TIMER, PRIO_RETURN, PRIO_STAND, PRIO_WATER, PRIO_SLOT = 0, 1, 2, 3, 4
 PENDING_MAX_SECS = 90     # 被挤掉的一次性事件最多等这么久，过了就不补了
+# 安静多久由菜单决定，不写死一小时。自定义分钟数必须落在这个闭区间里。
+QUIET_PRESETS = ((15, '15 分钟'), (30, '30 分钟'), (60, '1 小时'))
+QUIET_MIN_MINUTES = 1
+QUIET_MAX_MINUTES = 24 * 60
+QUIET_CUSTOM_SEED = 60     # 自定义框打开时先填上的数字；点取消不会开始安静
 
 
 # ======================= 小工具（纯函数，方便测试） =======================
+def quiet_minutes(value):
+    """合法的安静分钟数（1–1440 的整数）。不合法返回 None，调用方不要改倒计时。"""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, float):
+        if not value.is_integer():
+            return None
+        value = int(value)
+    if isinstance(value, int) and QUIET_MIN_MINUTES <= value <= QUIET_MAX_MINUTES:
+        return value
+    return None
+
+
+def quiet_span(minutes):
+    """时长说法。整小时写成「N 小时」，刚好一小时仍写「一小时」。"""
+    minutes = int(minutes)
+    if minutes > 0 and minutes % 60 == 0:
+        hours = minutes // 60
+        if hours == 1:
+            return '一小时'
+        return f'{hours} 小时'
+    return f'{minutes} 分钟'
+
+
+def quiet_minutes_left(until, now=None):
+    """距离截止还剩多少分钟（向上取整）。已到点返回 0。
+    减去极小量，避免「刚好 N 分钟」因浮点多出一丁点被进成 N+1。"""
+    now = time.time() if now is None else now
+    remain = float(until) - float(now)
+    if remain <= 0:
+        return 0
+    return max(1, math.ceil(remain / 60.0 - 1e-6))
+
+
 def clamp_bubble_y(y, h, vis):
     """气泡的 y 限制在可见区域 vis（窗口坐标）里：上面放不下就往下挪（压在她身上/身前），
     下面也留出 12px 给气泡尾巴。"""
@@ -1590,13 +1629,18 @@ class Pet(QWidget):
         m.addSeparator()
         act('显示她' if (self.user_hidden or not self.isVisible()) else ('先藏起来' if self.tray_ok else '躲到屏幕边上'), self.toggle_hidden)
         act('总在最前', lambda on: self.set_on_top(on), checked=st['on_top'])
-        # 安静一小时放在第一屏靠前（标题、显示/藏起来、总在最前之后；飘着/大小之前）。
+        # 安静时长放在第一屏靠前（标题、显示/藏起来、总在最前之后；飘着/大小之前）。
         # Windows 托盘右键和角色右键都走 fill_menu，改这里两边一起生效。
         if self.quiet():
-            left = int((st['quiet_until'] - time.time()) // 60) + 1
+            left = quiet_minutes_left(st['quiet_until'])
             act(f'结束安静（还剩 {left} 分钟）', self.end_quiet)
-        else:
-            act('安静一小时（不主动说话、不出声）', self.start_quiet)
+        qm = m.addMenu('安静一段时间')
+        act('（选一个新的时长会覆盖现在这段）' if self.quiet() else '（不主动说话、不出声）',
+            enabled=False, menu=qm)
+        for minutes, label in QUIET_PRESETS:
+            act(label, lambda _=False, minutes=minutes: self.start_quiet(minutes), menu=qm)
+        qm.addSeparator()
+        act('自定义…', lambda _=False: self.ask_quiet_custom(), menu=qm)
         mode_menu = m.addMenu('飘着 / 长脚')
         modes = QActionGroup(mode_menu); modes.setExclusive(True)
         for legs, label in ((False, '飘着'), (True, '长脚')):
@@ -1682,10 +1726,46 @@ class Pet(QWidget):
         r = MICRO.get(self.st['micro'])
         return random.uniform(*r) if r else 1e12
 
-    def start_quiet(self):
+    def start_quiet(self, minutes=None):
+        """按用户选的分钟数进入安静，或覆盖正在进行的那段。不合法的分钟数不改倒计时。"""
+        m = quiet_minutes(minutes)
+        if m is None:
+            self.log('quiet rejected')
+            return False
         self.say('quiet_on', voice=False)
-        self.st['quiet_until'] = time.time() + 3600; self.was_quiet = True; self.save_later(); self.log('quiet on')
+        self.show_bubble(f'好，我安静待 {quiet_span(m)}，有事点我就好。')
+        self.st['quiet_until'] = time.time() + m * 60
+        self.was_quiet = True
+        self.save_later()
+        self.log('quiet on', m)
         self.voice.stop()
+        return True
+
+    def ask_quiet_custom(self):
+        minutes = self.prompt_quiet_minutes()
+        if minutes is None:
+            return False
+        return self.start_quiet(minutes)
+
+    def prompt_quiet_minutes(self):
+        """弹出分钟数输入。取消、测试禁止弹框，或结果不在 1–1440 时返回 None。"""
+        if ENV('ZHANGGUI_PET_NO_DIALOG') == '1':
+            return None
+        from PySide6.QtWidgets import QInputDialog
+        seed = QUIET_CUSTOM_SEED
+        if self.quiet():
+            left = quiet_minutes_left(self.st['quiet_until'])
+            if quiet_minutes(left) is not None:
+                seed = left
+        value, ok = QInputDialog.getInt(
+            None, '自定义安静时长',
+            f'要安静多少分钟？（{QUIET_MIN_MINUTES} 到 {QUIET_MAX_MINUTES}）\n'
+            '这段时间不主动说话、不出声，点她还会回应。',
+            seed, QUIET_MIN_MINUTES, QUIET_MAX_MINUTES, 1,
+            Qt.Dialog | Qt.WindowStaysOnTopHint)
+        if not ok:
+            return None
+        return quiet_minutes(value)
 
     def end_quiet(self):
         self.st['quiet_until'] = 0.0; self.was_quiet = False; self.save_later()

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""安静菜单位置，以及可选离线语音包：缺文件不报错，macOS 播放会调用 afplay。
+"""安静菜单位置和时长，以及可选离线语音包：缺文件不报错，macOS 播放会调用 afplay。
 运行：QT_QPA_PLATFORM=offscreen python tests/test_voice_pack.py
 """
 import os
@@ -63,6 +63,19 @@ SCR = FakeScreen()
 
 def top_labels(menu):
     return [a.text() for a in menu.actions() if a.text()]
+
+
+def find_action(menu, text, prefix=False):
+    for action in menu.actions():
+        label = action.text()
+        if label == text or (prefix and label.startswith(text)):
+            return action
+        sub = action.menu()
+        if sub is not None:
+            found = find_action(sub, text, prefix)
+            if found is not None:
+                return found
+    return None
 
 
 class PlayerProbe(unittest.TestCase):
@@ -231,7 +244,7 @@ class Menu(unittest.TestCase):
         menu = QMenu(pet)
         pet.fill_menu(menu)
         labels = top_labels(menu)
-        quiet = next(i for i, t in enumerate(labels) if t.startswith('安静一小时'))
+        quiet = labels.index('安静一段时间')
         show = next(i for i, t in enumerate(labels) if t.startswith(('显示她', '先藏起来', '躲到屏幕边上')))
         legs = labels.index('飘着 / 长脚')
         size = next(i for i, t in enumerate(labels) if t.startswith('大小'))
@@ -239,13 +252,127 @@ class Menu(unittest.TestCase):
         self.assertLess(quiet, legs)
         self.assertLess(quiet, size)
         self.assertLess(quiet, 4)
-        pet.st['quiet_until'] = time.time() + 3600
+        self.assertFalse(any(t.startswith('安静一小时') for t in labels))
+        self.assertFalse(any(t.startswith('结束安静') for t in labels))
+        sub = find_action(menu, '安静一段时间').menu()
+        sub_labels = top_labels(sub)
+        self.assertEqual(sub_labels[0], '（不主动说话、不出声）')
+        self.assertEqual([m for m, _label in Z.QUIET_PRESETS], [15, 30, 60])
+        for _minutes, label in Z.QUIET_PRESETS:
+            self.assertIn(label, sub_labels)
+        self.assertIn('自定义…', sub_labels)
+        self.assertLess(sub_labels.index('1 小时'), sub_labels.index('自定义…'))
+
+        pet.st['quiet_until'] = time.time() + 30 * 60
+        pet.was_quiet = True
         pet.fill_menu(menu)
         labels = top_labels(menu)
         text = next(t for t in labels if t.startswith('结束安静'))
-        self.assertRegex(text, r'^结束安静（还剩 \d+ 分钟）$')
-        self.assertLess(labels.index(text), labels.index('飘着 / 长脚'))
-        self.assertFalse(any(t.startswith('安静一小时') for t in labels))
+        self.assertEqual(text, '结束安静（还剩 30 分钟）')
+        self.assertLess(labels.index(text), labels.index('安静一段时间'))
+        self.assertLess(labels.index('安静一段时间'), labels.index('飘着 / 长脚'))
+        self.assertLess(labels.index(text), 4)
+        self.assertFalse(any('安静一小时' in t for t in labels))
+        sub = find_action(menu, '安静一段时间').menu()
+        self.assertEqual(top_labels(sub)[0], '（选一个新的时长会覆盖现在这段）')
+        self.assertIn('15 分钟', top_labels(sub))
+
+    def test_quiet_presets_set_and_override_minutes(self):
+        pet = self.pet()
+        menu = QMenu(pet)
+        pet.fill_menu(menu)
+        find_action(menu, '15 分钟').trigger()
+        self.assertTrue(pet.quiet())
+        self.assertTrue(pet.was_quiet)
+        left = pet.st['quiet_until'] - time.time()
+        self.assertGreater(left, 15 * 60 - 2)
+        self.assertLess(left, 15 * 60 + 1)
+        self.assertIn('15 分钟', pet.bubble[0])
+        self.assertNotIn('一小时', pet.bubble[0])
+
+        pet.fill_menu(menu)
+        find_action(menu, '30 分钟').trigger()
+        left = pet.st['quiet_until'] - time.time()
+        self.assertGreater(left, 30 * 60 - 2)
+        self.assertLess(left, 30 * 60 + 1)
+        self.assertIn('30 分钟', pet.bubble[0])
+
+        pet.fill_menu(menu)
+        find_action(menu, '1 小时').trigger()
+        left = pet.st['quiet_until'] - time.time()
+        self.assertGreater(left, 60 * 60 - 2)
+        self.assertLess(left, 60 * 60 + 1)
+        self.assertIn('一小时', pet.bubble[0])
+        self.assertNotIn('60 分钟', pet.bubble[0])
+
+        pet.fill_menu(menu)
+        end = find_action(menu, '结束安静', prefix=True)
+        self.assertIsNotNone(end)
+        self.assertIsNone(end.menu())
+        end.trigger()
+        self.assertFalse(pet.quiet())
+        self.assertEqual(pet.st['quiet_until'], 0.0)
+        self.assertFalse(pet.was_quiet)
+
+    def test_custom_minutes_and_bounds(self):
+        pet = self.pet()
+        self.assertTrue(pet.start_quiet(1))
+        self.assertLess(abs((pet.st['quiet_until'] - time.time()) - 60), 2)
+        self.assertIn('1 分钟', pet.bubble[0])
+        self.assertTrue(pet.start_quiet(24 * 60))
+        self.assertLess(abs((pet.st['quiet_until'] - time.time()) - 24 * 60 * 60), 2)
+        self.assertIn('24 小时', pet.bubble[0])
+        self.assertTrue(pet.start_quiet(90))
+        self.assertIn('90 分钟', pet.bubble[0])
+        self.assertTrue(pet.start_quiet(120))
+        self.assertIn('2 小时', pet.bubble[0])
+        until = pet.st['quiet_until']
+        for bad in (None, 0, -5, 24 * 60 + 1, 15.5, True, False, '30', '15'):
+            self.assertFalse(pet.start_quiet(bad))
+            self.assertEqual(pet.st['quiet_until'], until)
+            self.assertTrue(pet.quiet())
+        self.assertTrue(pet.start_quiet(15.0))
+        self.assertLess(abs((pet.st['quiet_until'] - time.time()) - 15 * 60), 2)
+
+    def test_custom_dialog_applies_only_when_confirmed(self):
+        pet = self.pet()
+        with patch('PySide6.QtWidgets.QInputDialog.getInt') as dlg:
+            self.assertFalse(pet.ask_quiet_custom())
+            dlg.assert_not_called()
+            self.assertFalse(pet.quiet())
+
+        with patch.dict(os.environ, {'ZHANGGUI_PET_NO_DIALOG': '0'}):
+            with patch('PySide6.QtWidgets.QInputDialog.getInt', return_value=(45, True)) as dlg:
+                self.assertTrue(pet.ask_quiet_custom())
+            args = dlg.call_args.args
+            self.assertEqual(args[1], '自定义安静时长')
+            self.assertIn('1 到 1440', args[2])
+            self.assertEqual(args[3], Z.QUIET_CUSTOM_SEED)
+            self.assertEqual(args[4], Z.QUIET_MIN_MINUTES)
+            self.assertEqual(args[5], Z.QUIET_MAX_MINUTES)
+            left = pet.st['quiet_until'] - time.time()
+            self.assertGreater(left, 45 * 60 - 2)
+            self.assertLess(left, 45 * 60 + 1)
+            self.assertIn('45 分钟', pet.bubble[0])
+
+            frozen = pet.st['quiet_until']
+            with patch('PySide6.QtWidgets.QInputDialog.getInt', return_value=(15, False)) as dlg:
+                self.assertFalse(pet.ask_quiet_custom())
+                self.assertEqual(dlg.call_args.args[3], Z.quiet_minutes_left(frozen))
+            self.assertEqual(pet.st['quiet_until'], frozen)
+
+            with patch('PySide6.QtWidgets.QInputDialog.getInt', return_value=(24 * 60 + 9, True)):
+                self.assertFalse(pet.ask_quiet_custom())
+            self.assertEqual(pet.st['quiet_until'], frozen)
+
+        menu = QMenu(pet)
+        pet.fill_menu(menu)
+        with patch.dict(os.environ, {'ZHANGGUI_PET_NO_DIALOG': '0'}):
+            with patch('PySide6.QtWidgets.QInputDialog.getInt', return_value=(7, True)):
+                find_action(menu, '自定义…').trigger()
+        left = pet.st['quiet_until'] - time.time()
+        self.assertGreater(left, 7 * 60 - 2)
+        self.assertLess(left, 7 * 60 + 1)
 
     def test_sound_menu_shows_pack_state(self):
         pet = self.pet()
@@ -281,6 +408,31 @@ class Menu(unittest.TestCase):
         self.assertIn('def contextMenuEvent', src)
         self.assertIn('self.fill_menu(m)', src)
         self.assertIn('self.tray_menu.aboutToShow.connect(lambda: self.fill_menu(self.tray_menu))', src)
+        self.assertIn("m.addMenu('安静一段时间')", src)
+        self.assertNotIn('time.time() + 3600', src)
+
+
+class QuietDuration(unittest.TestCase):
+    def test_bounds_span_and_remaining(self):
+        self.assertEqual(Z.quiet_minutes(1), 1)
+        self.assertEqual(Z.quiet_minutes(24 * 60), 24 * 60)
+        self.assertEqual(Z.quiet_minutes(15.0), 15)
+        for bad in (0, -1, 24 * 60 + 1, 15.5, True, False, '30', None, 1.2):
+            self.assertIsNone(Z.quiet_minutes(bad))
+        self.assertEqual(Z.quiet_span(15), '15 分钟')
+        self.assertEqual(Z.quiet_span(60), '一小时')
+        self.assertEqual(Z.quiet_span(120), '2 小时')
+        self.assertEqual(Z.quiet_span(90), '90 分钟')
+        self.assertEqual(Z.quiet_span(24 * 60), '24 小时')
+        now = 1_000_000.0
+        self.assertEqual(Z.quiet_minutes_left(now + 15 * 60, now), 15)
+        self.assertEqual(Z.quiet_minutes_left(now + 3600, now), 60)
+        self.assertEqual(Z.quiet_minutes_left(now + 60, now), 1)
+        self.assertEqual(Z.quiet_minutes_left(now + 61, now), 2)
+        self.assertEqual(Z.quiet_minutes_left(now + 0.2, now), 1)
+        self.assertEqual(Z.quiet_minutes_left(now, now), 0)
+        self.assertEqual(Z.quiet_minutes_left(now - 5, now), 0)
+        self.assertEqual(Z.quiet_minutes_left(now + 24 * 60 * 60, now), 24 * 60)
 
 
 if __name__ == '__main__':
