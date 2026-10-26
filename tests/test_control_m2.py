@@ -180,6 +180,11 @@ def lines(path):
     return out
 
 
+def read_bytes(path):
+    with open(path, 'rb') as f:
+        return f.read()
+
+
 def new_card(text=COMMENT, category='outbound', title='Day5 置顶', target='B站 · Day5 置顶', source='助手'):
     return {
         'category': category,
@@ -226,9 +231,12 @@ class T0_Rules(unittest.TestCase):
         self.assertEqual(K.validate_card('report', {
             'operationId': 'OP-20261027-0001', 'phase': 'confirmed', 'text': 'x',
         })[1], 'bad args')
-        self.assertIsNone(K.validate_card('report', {
+        report_cmd, report_err = K.validate_card('report', {
             'operationId': 'OP-20261027-0001', 'phase': 'completed', 'text': '办好啦', 'ref': '',
-        })[0])
+        })
+        self.assertIsNone(report_err)
+        self.assertEqual(report_cmd['phase'], 'completed')
+        self.assertEqual(report_cmd['text'], '办好啦')
         self.assertEqual(C.validate('card/confirm', {'cardId': 'C-20261027-001'})[1], 'bad args')
         self.assertEqual(C.validate('confirm', {})[1], 'bad args')
 
@@ -290,7 +298,7 @@ class T0_Rules(unittest.TestCase):
             book.user_act(cid, 'confirm', 1)
         self.assertEqual(old.exception.public, 'conflict')
         self.assertEqual(events_named(book.path, 'confirmed'), [])
-        before = open(book.path, 'rb').read()
+        before = read_bytes(book.path)
         done = book.user_act(cid, 'confirm', 2)
         self.assertEqual(done['phase'], 'confirmed')
         self.assertEqual(done['by'] if 'by' in done else K.BY_USER, K.BY_USER)
@@ -298,7 +306,7 @@ class T0_Rules(unittest.TestCase):
         self.assertTrue(second['already'])
         self.assertEqual(second['phase'], 'confirmed')
         self.assertEqual(len(events_named(book.path, 'confirmed')), 1)
-        after = open(book.path, 'rb').read()
+        after = read_bytes(book.path)
         self.assertTrue(after.startswith(before))
         row = events_named(book.path, 'confirmed')[0]
         self.assertEqual(row['by'], 'user@pet')
@@ -358,7 +366,7 @@ class T0_Rules(unittest.TestCase):
         book2 = K.CardBook(conf2)
         made2 = book2.handle(K.validate_card('draft', new_card())[0])
         book2.handle(K.validate_card('prepare', {'cardId': made2['cardId'], 'version': 1})[0])
-        snapshot = open(book2.path, 'rb').read()
+        snapshot = read_bytes(book2.path)
 
         def fail(rec):
             raise OSError('full')
@@ -367,9 +375,11 @@ class T0_Rules(unittest.TestCase):
         with self.assertRaises(OSError):
             book2.user_act(made2['cardId'], 'confirm', 1)
         self.assertEqual(book2.phase_of(made2['cardId']), 'awaiting_confirmation')
-        self.assertEqual(open(book2.path, 'rb').read(), snapshot)
-        self.assertNotIn('subprocess', open(os.path.join(ROOT, 'pet_cards.py'), encoding='utf-8').read())
-        self.assertNotIn('os.system', open(os.path.join(ROOT, 'pet_cards.py'), encoding='utf-8').read())
+        self.assertEqual(read_bytes(book2.path), snapshot)
+        with open(os.path.join(ROOT, 'pet_cards.py'), encoding='utf-8') as f:
+            src = f.read()
+        self.assertNotIn('subprocess', src)
+        self.assertNotIn('os.system', src)
 
 
 class T1_Window(unittest.TestCase):
@@ -482,7 +492,8 @@ class T1_Window(unittest.TestCase):
             self.assertEqual(win.body.text(), REVISED)
             self.assertNotIn('请删除', win.body.text())
             self.assertTrue(os.path.exists(sentinel))
-            self.assertEqual(open(sentinel, encoding='utf-8').read(), 'stay')
+            with open(sentinel, encoding='utf-8') as f:
+                self.assertEqual(f.read(), 'stay')
             blob = '\n'.join(pet.log.ring)
             self.assertNotIn(REVISED, blob)
             self.assertNotIn(DELETE_NOTE, blob)
@@ -607,11 +618,11 @@ class T1_Window(unittest.TestCase):
             self.assertTrue(win.btn_look.isVisible())
             self.assertTrue(win.btn_redraft.isVisible())
             self.assertFalse(win.btn_confirm.isVisible())
-            before = open(pet.cards.path, 'rb').read()
+            before = read_bytes(pet.cards.path)
             win.btn_look.click()
             win.btn_redraft.click()
             pump(0.05)
-            self.assertEqual(open(pet.cards.path, 'rb').read(), before)
+            self.assertEqual(read_bytes(pet.cards.path), before)
             self.assertEqual(pet.cards.phase_of(cid), 'unknown')
             self.assertIsNotNone(pet.bubble)
             self.assertIn('不会重发', pet.bubble[0])
@@ -628,7 +639,7 @@ class T1_Window(unittest.TestCase):
             self.assertTrue(pet.card_windows[qid].isVisible())
             self.assertIn('💰 要花钱', pet.card_windows[qid].tag.text())
             qwin = pet.card_windows[qid]
-            snap = open(pet.cards.path, 'rb').read()
+            snap = read_bytes(pet.cards.path)
             real_writer = pet.cards._writer
 
             def fail_write(rec):
@@ -639,7 +650,7 @@ class T1_Window(unittest.TestCase):
             self.assertEqual(pet.cards.phase_of(qid), 'awaiting_confirmation')
             self.assertTrue(qwin.btn_confirm.isVisible())
             self.assertEqual(qwin.hint.text(), '这张要你点头才行～')
-            self.assertEqual(open(pet.cards.path, 'rb').read(), snap)
+            self.assertEqual(read_bytes(pet.cards.path), snap)
             pet.cards._writer = real_writer
 
             clock = [pet.cards.now_ms()]
