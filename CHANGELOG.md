@@ -1,5 +1,14 @@
 # 更新记录
 
+## 未发布 · 任务卡确认流（M2）
+
+- 版本仍是 **0.3.10**。粉丝包默认还是看不到「高级」：打包后要设置里 `show_control_menu` 为 true 才出现。开关默认关。
+- `pet_ctl card` 子命令：`draft` / `prepare` / `receipt` / `report` / `withdraw`，参数 `--json-base64`，多一个字段就拒绝。没有 `confirm` 命令，确认只能在任务卡上点。
+- 任务卡小窗：完整正文可滚动；按钮「确认 / 改一下 / 不要」。草稿阶段没有「确认」。「改一下」只记 `revise_requested`，桌宠里不改正文。
+- 回执簿 `receipts.jsonl` 在配置目录（macOS：`~/Library/Application Support/ZhangguiPet`），只追加。写成功才改卡片。同一张单只确认一次；`expectedVersion` 不对是 `conflict`；阶段不能倒退或跳步；待确认 24 小时没点变成 `unavailable`。
+- 回单里的文字只显示（先过长度和 `redact_text()`），不当命令。类别：`money` / `delete` / `outbound` / `direction`。
+- 测试：`QT_QPA_PLATFORM=offscreen python tests/test_control_m2.py`。
+
 ## 未发布 · 本机助手通道（M1）
 
 - 菜单「高级 → 允许本机助手控制我（实验）」。默认关。源码运行看得到；打包后的粉丝版默认不显示这项，要在设置里把 `show_control_menu` 写成 true 才出现。

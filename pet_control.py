@@ -4,6 +4,7 @@
 只监听 127.0.0.1。每个请求要带配置目录里 control_token 的口令（请求头 X-Pet-Token）。
 带浏览器 Origin 的请求拒绝；Host 必须是 127.0.0.1:端口。
 动作是一份严格 JSON：多一个不认识的字段就拒绝。这里不执行任意命令，也不写日志正文。
+任务卡是 card/draft|prepare|receipt|report|withdraw。没有 confirm 这个动作。
 
 网络线程只做校验，真正碰界面的动作交给 dispatch（桌宠在主线程里做）。
 """
@@ -11,16 +12,20 @@ import json, os, hmac, time, base64, socket, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pet_lines as PL
+import pet_cards
 
 DEFAULT_PORT = 6710
 TOKEN_HEADER = 'X-Pet-Token'
 TOKEN_NAME = 'control_token'
 MAX_BODY = 8192
+# 任务卡正文最长 2000 字。卡片请求单独放宽，别的动作仍是 MAX_BODY。
+CARD_MAX_BODY = 65536
 RATE_PER_SEC = 2
 TEXT_MAX = 200
 OPTION_MAX = 10
 OPTIONS_MAX = 3
 SOURCE_MAX = 24
+CARD_SUBS = pet_cards.CARD_SUBS
 
 ACTIONS = frozenset({
     'status', 'say', 'line', 'expr', 'peek', 'quiet', 'hide', 'show', 'feedback', 'wait',
@@ -155,7 +160,10 @@ def _int_in(value, lo, hi):
 
 def validate(action, payload):
     """白名单校验。通过返回 (cmd, None)，否则 (None, 'bad args')。
-    cmd 只含认识的字段，调用方不要再碰原始 payload。"""
+    cmd 只含认识的字段，调用方不要再碰原始 payload。
+    任务卡走 card/<子命令>。没有 confirm：确认只能在桌宠卡片上点。"""
+    if isinstance(action, str) and action.startswith('card/'):
+        return pet_cards.validate_card(action[5:], payload)
     if action not in ACTIONS or not isinstance(payload, dict):
         return None, 'bad args'
     if set(payload) - _FIELDS[action]:
@@ -238,7 +246,13 @@ def validate(action, payload):
 
 
 def _safe_action(action):
-    return action if action in ACTIONS else 'request'
+    if action in ACTIONS:
+        return action
+    if isinstance(action, str) and action.startswith('card/'):
+        sub = action[5:]
+        if sub in CARD_SUBS and '/' not in sub:
+            return 'card ' + sub
+    return 'request'
 
 
 class _HTTPServer(ThreadingHTTPServer):
@@ -330,21 +344,33 @@ class _Handler(BaseHTTPRequestHandler):
             return 403, {'ok': False, 'error': '来源不对'}
         return None
 
+    def _body_limit(self):
+        raw = self.path or ''
+        if raw.startswith('/card/'):
+            return CARD_MAX_BODY
+        return MAX_BODY
+
     def _action_name(self):
         raw = self.path or ''
         if '?' in raw or '#' in raw or '%' in raw or not raw.startswith('/'):
             return None
         name = raw[1:]
-        if not name or '/' in name or name not in ACTIONS:
+        if not name or name == 'confirm':
             return None
-        return name
+        if name in ACTIONS:
+            return name
+        if name.startswith('card/'):
+            sub = name[5:]
+            if sub in CARD_SUBS and sub != 'confirm' and '/' not in sub:
+                return name
+        return None
 
     def _read_json(self):
         raw_len = self.headers.get('Content-Length', '0').strip()
         if not raw_len.isdigit():
             return None, 'bad args'
         n = int(raw_len)
-        if n > MAX_BODY:
+        if n > self._body_limit():
             return None, 'bad args'
         if n == 0:
             return {}, None
@@ -387,6 +413,8 @@ def _status_code(result):
         return 429
     if err == '控制未开启':
         return 503
+    if err == 'conflict':
+        return 409
     return 400
 
 

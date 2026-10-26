@@ -6,7 +6,7 @@
 台词在 pet_lines.py；系统相关（设置、全屏检测、空闲时间、自启、语音）在 pet_platform.py；
 “说什么”的接口在 pet_brain.py（v0.4 的可选联网聊天/TTS 从这里接）。
 本机助手通道（pet_control，菜单「高级」，默认关）只听 127.0.0.1；关着时不监听，离线脑路径不变。
-feedback / wait 只读气泡按钮的点击，按 since 游标返回，不写任务卡。"""
+feedback / wait 只读气泡按钮的点击，按 since 游标返回。任务卡走 pet_ctl card，确认只能在卡片上点。"""
 import os, sys, json, random, time, datetime, traceback, math, threading
 
 VERSION = '0.3.10'
@@ -96,12 +96,14 @@ from PySide6.QtCore import (Qt, QTimer, QPoint, QRect, QRectF, QPointF, QPropert
 from PySide6.QtGui import (QImage, QPainter, QRegion, QBitmap, QFont, QFontMetrics, QColor, QPainterPath, QPen,
                            QAction, QActionGroup, QGuiApplication, QIcon, QCursor, QDesktopServices)
 from PySide6.QtWidgets import (QApplication, QWidget, QMenu, QSystemTrayIcon, QWidgetAction, QSlider, QLabel,
-                               QHBoxLayout, QVBoxLayout, QPushButton, QSpinBox, QCheckBox, QRadioButton, QButtonGroup)
+                               QHBoxLayout, QVBoxLayout, QPushButton, QSpinBox, QCheckBox, QRadioButton, QButtonGroup,
+                               QScrollArea)
 
 import pet_lines as PL
 import pet_platform as P
 import pet_macos as MAC
 import pet_control
+import pet_cards
 from pet_brain import LocalBrain
 
 BASE = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
@@ -663,6 +665,180 @@ class TimerPanel(QWidget):
         self.pet.update_badge()
 
 
+# ======================= 任务卡（只看正文和按钮，不能在这里改字） =======================
+_CARD_WARM = (
+    'QWidget#taskcard{background:#fffaf3;color:#2c2a4a}'
+    'QLabel{background:transparent;color:#2c2a4a}'
+    'QScrollArea{background:#fffaf3;border:1px solid #eadfce;border-radius:8px}'
+    'QPushButton{background:#f3eadc;color:#2c2a4a;border:1px solid #d9cbb6;border-radius:8px;padding:4px 10px}'
+    'QPushButton#confirm{background:#d9ecff;border:1px solid #9ec4ea}'
+)
+_CARD_GRAY = (
+    'QWidget#taskcard{background:#eceae6;color:#5c5870}'
+    'QLabel{background:transparent;color:#5c5870}'
+    'QScrollArea{background:#f4f2ee;border:1px solid #ddd8d0;border-radius:8px}'
+    'QPushButton{background:#e4e1db;color:#5c5870;border:1px solid #ccc6bc;border-radius:8px;padding:4px 10px}'
+)
+
+
+class TaskCardWindow(QWidget):
+    """独立小窗：完整正文可滚动。草稿没有「确认」。没有输入框。"""
+
+    def __init__(self, pet, card_id):
+        flags = (Qt.Tool | Qt.WindowTitleHint | Qt.WindowDoesNotAcceptFocus
+                 | Qt.WindowStaysOnTopHint | Qt.NoDropShadowWindowHint)
+        super().__init__(None, flags)
+        self.pet = pet
+        self.card_id = card_id
+        self.bound_version = 0
+        self.phase = ''
+        self._ref_shown = ''
+        self.setObjectName('taskcard')
+        self.setWindowTitle('任务卡')
+        self.setFocusPolicy(Qt.NoFocus)
+        self.setAttribute(Qt.WA_ShowWithoutActivating, True)
+        if P.IS_MAC:
+            self.setAttribute(Qt.WA_MacAlwaysShowToolWindow, True)
+        self.setFixedWidth(360)
+        if pet.icon is not None:
+            self.setWindowIcon(pet.icon)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(12, 10, 12, 10)
+        root.setSpacing(6)
+        self.tag = QLabel()
+        self.tag.setFont(pet.font)
+        self.title = QLabel()
+        self.title.setFont(pet.font)
+        self.title.setWordWrap(True)
+        self.target = QLabel()
+        self.target.setWordWrap(True)
+        self.modified = QLabel('已修改（相对原稿）')
+        self.modified.setVisible(False)
+        self.scroll = QScrollArea()
+        self.scroll.setFocusPolicy(Qt.NoFocus)
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFixedHeight(150)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.body = QLabel()
+        self.body.setWordWrap(True)
+        self.body.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+        self.body.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.body.setFocusPolicy(Qt.NoFocus)
+        self.scroll.setWidget(self.body)
+        self.hint = QLabel()
+        self.hint.setWordWrap(True)
+        self.status = QLabel(pet_cards.CONFIRMED_STATUS)
+        self.status.setVisible(False)
+        self.result = QLabel()
+        self.result.setWordWrap(True)
+        self.result.setObjectName('resultText')
+        self.result.setVisible(False)
+        self.meta = QLabel()
+        for lab in (self.tag, self.title, self.target, self.modified, self.hint, self.status, self.result, self.meta, self.body):
+            lab.setFocusPolicy(Qt.NoFocus)
+        root.addWidget(self.tag)
+        root.addWidget(self.title)
+        root.addWidget(self.target)
+        root.addWidget(self.modified)
+        root.addWidget(self.scroll)
+        root.addWidget(self.hint)
+        root.addWidget(self.status)
+        root.addWidget(self.result)
+        root.addWidget(self.meta)
+        row = QHBoxLayout()
+        self.btn_confirm = self._button('确认', 'confirm')
+        self.btn_revise = self._button('改一下', 'revise')
+        self.btn_reject = self._button('不要', 'reject')
+        self.btn_look = QPushButton('去看一眼')
+        self.btn_redraft = QPushButton('重新起草一单')
+        for btn in (self.btn_look, self.btn_redraft):
+            btn.setFocusPolicy(Qt.NoFocus)
+        self.btn_look.clicked.connect(self._look)
+        self.btn_redraft.clicked.connect(self._redraft)
+        self.btn_look.setVisible(False)
+        self.btn_redraft.setVisible(False)
+        row.addWidget(self.btn_confirm)
+        row.addWidget(self.btn_revise)
+        row.addWidget(self.btn_reject)
+        row.addWidget(self.btn_look)
+        row.addWidget(self.btn_redraft)
+        root.addLayout(row)
+        self.setStyleSheet(_CARD_WARM)
+
+    def _button(self, text, kind):
+        btn = QPushButton(text)
+        btn.setObjectName(kind)
+        btn.setFocusPolicy(Qt.NoFocus)
+        btn.clicked.connect(lambda _=False, kind=kind: self.press(kind))
+        return btn
+
+    def press(self, kind):
+        self.pet.on_card_button(self.card_id, kind, self.bound_version)
+
+    def _look(self):
+        if self._ref_shown:
+            self.pet.show_bubble('只是给你看一眼：' + self._ref_shown[:60] + '。不会重发。')
+        else:
+            self.pet.show_bubble('这张卡没写位置。不会重发。')
+
+    def _redraft(self):
+        self.pet.show_bubble('要重做就让助手重新起草一单。这张不会重发。')
+
+    def render(self, view, conflict=False):
+        self.bound_version = int(view['version'])
+        self.phase = view['phase']
+        self.btn_confirm.setProperty('expectedVersion', self.bound_version)
+        self.setWindowTitle('任务卡')
+        self.tag.setText(view['categoryLabel'])
+        self.title.setText(view['title'])
+        self.target.setText(view['target'])
+        self.body.setText(view['dispatchText'])
+        width = 320
+        self.body.setMinimumWidth(width)
+        lines = view['dispatchText'].count('\n') + 1
+        self.body.setMinimumHeight(max(self.body.heightForWidth(width), lines * 18))
+        self.modified.setVisible(bool(view['modified']))
+        self.hint.setText(pet_cards.CONFLICT_HINT if conflict else view.get('hint') or '')
+        confirmed = view['phase'] == 'confirmed'
+        self.status.setVisible(confirmed)
+        result = self.pet._card_redact(view.get('resultText') or '')
+        ref = self.pet._card_redact(view.get('resultRef') or '')
+        self._ref_shown = ref
+        if result:
+            self.result.setText(result)
+            self.result.setVisible(True)
+        else:
+            self.result.clear()
+            self.result.setVisible(False)
+        self.meta.setText('v%s · %s' % (view['version'], view['source']))
+        decide = view['phase'] in ('draft', 'awaiting_confirmation')
+        show_confirm = view['phase'] == 'awaiting_confirmation'
+        self.btn_confirm.setVisible(show_confirm)
+        self.btn_confirm.setEnabled(show_confirm)
+        self.btn_revise.setVisible(decide)
+        self.btn_revise.setEnabled(decide)
+        self.btn_reject.setVisible(decide)
+        self.btn_reject.setEnabled(decide)
+        unknown = view['phase'] == 'unknown'
+        self.btn_look.setVisible(unknown)
+        self.btn_look.setEnabled(unknown)
+        self.btn_redraft.setVisible(unknown)
+        self.btn_redraft.setEnabled(unknown)
+        self.setStyleSheet(_CARD_GRAY if view['phase'] not in ('draft', 'awaiting_confirmation') else _CARD_WARM)
+        self.adjustSize()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        try:
+            MAC.tune_pet_window(self)
+        except Exception:
+            pass
+
+    def closeEvent(self, event):
+        # 关掉窗口不算确认，也不算不要。
+        event.ignore()
+
+
 # ======================= 桌宠本体 =======================
 class _ControlBridge(QObject):
     """把网络线程上的动作排回主线程。队列连接，不在网络线程里碰界面。"""
@@ -790,6 +966,11 @@ class Pet(QWidget):
         self.control_clicks = []            # {id, option, index, at}，id 从 1 递增
         self.control_cursor = 0             # 最新一次点击的 id；还没人点过是 0
         self.control_feed_cv = threading.Condition()
+        self.cards = None                   # 任务卡账；开关关着时是 None，不读回执簿
+        self.card_windows = {}
+        self.card_timer = QTimer(self)
+        self.card_timer.setInterval(60 * 1000)
+        self.card_timer.timeout.connect(self._card_expire_tick)
         self.greeted = set()
         slot = PL.current_slot()
         if slot:
@@ -1091,7 +1272,9 @@ class Pet(QWidget):
         if self.fs_hidden and not self.fs_aux_hidden:
             self.fs_aux_hidden = True
             self.fs_aux = []
-            for w in (self.panel, getattr(self, 'about_box', None)):
+            extras = [self.panel, getattr(self, 'about_box', None)]
+            extras.extend(getattr(self, 'card_windows', {}).values())
+            for w in extras:
                 if w is not None and w.isVisible():
                     w.hide(); self.fs_aux.append(w)
             if self.fs_aux:
@@ -2389,10 +2572,23 @@ class Pet(QWidget):
             self.control_log_line('control rejected(bind)')
             return False
         self.control = srv
+        try:
+            self.cards = pet_cards.CardBook(self.conf)
+            self.cards.expire_due()
+        except OSError:
+            self.control_log_line('control card rejected(io)')
+            self.cards = None
+        if self.cards is not None:
+            self._card_restore()
+            self.card_timer.start()
         self.control_log_line('control listen ok')
         return True
 
     def _control_stop(self):
+        self._card_close_all()
+        if getattr(self, 'card_timer', None) is not None:
+            self.card_timer.stop()
+        self.cards = None
         self.control_q = []
         self.control_deferred = None
         self.bubble_options = None
@@ -2417,6 +2613,7 @@ class Pet(QWidget):
         if action == 'wait':
             if not self._control_open():
                 return {'ok': False, 'error': '控制未开启', 'action': 'wait'}
+            cmd['_receiptSince'] = self._receipt_seq()
             ms = cmd.get('timeoutMs', 0)
             self._control_wait_for_click(cmd.get('since', 0), (ms or 0) / 1000.0)
             if not self._control_open():
@@ -2442,8 +2639,17 @@ class Pet(QWidget):
             return {'ok': True, 'action': 'feedback', 'result': self._control_feedback_snapshot(cmd.get('since', 0))}
         if action == 'wait':
             # 等待已经在网络线程做完。这里只读当前游标，超时也走这条。
+            # 这段等待里如果卡片上有了确认 / 改一下 / 不要，一并带回去。没有 confirm 命令。
+            snap = self._control_feedback_snapshot(cmd.get('since', 0))
+            since_receipt = cmd.get('_receiptSince', 0)
+            if isinstance(since_receipt, bool) or not isinstance(since_receipt, int) or since_receipt < 0:
+                since_receipt = 0
+            snap['receiptCursor'] = self._receipt_seq()
+            snap['cardEvents'] = self.cards.events_since(since_receipt) if self.cards is not None else []
             self.control_log_line('control wait ok')
-            return {'ok': True, 'action': 'wait', 'result': self._control_feedback_snapshot(cmd.get('since', 0))}
+            return {'ok': True, 'action': 'wait', 'result': snap}
+        if action == 'card':
+            return self._control_card(cmd)
         if action == 'quiet':
             return self._control_quiet(cmd.get('minutes'))
         if action == 'hide':
@@ -2473,6 +2679,7 @@ class Pet(QWidget):
             'hidden': bool(self.user_hidden or not self.isVisible()),
             'fullscreen': bool(self.fs_hidden),
             'cursor': cursor,
+            'receiptCursor': self._receipt_seq(),
         }
 
     def _control_feedback_snapshot(self, since):
@@ -2484,17 +2691,26 @@ class Pet(QWidget):
             clicks = [dict(item) for item in self.control_clicks if item['id'] > since]
         return {'cursor': cursor, 'clicks': clicks}
 
+    def _receipt_seq(self):
+        book = self.cards
+        if book is None:
+            return 0
+        return book.seq
+
     def _control_wait_for_click(self, since, seconds):
         if isinstance(since, bool) or not isinstance(since, int) or since < 0:
             since = 0
         if not seconds or seconds <= 0:
             return
+        start_receipt = self._receipt_seq()
         deadline = time.monotonic() + float(seconds)
         with self.control_feed_cv:
             while True:
                 if not self._control_open():
                     return
                 if any(item['id'] > since for item in self.control_clicks):
+                    return
+                if self._receipt_seq() > start_receipt:
                     return
                 remain = deadline - time.monotonic()
                 if remain <= 0:
@@ -2733,6 +2949,171 @@ class Pet(QWidget):
             return self._control_show_speech(item) is not None
         self._control_apply_silent(item)
         return True
+
+    def _card_redact(self, text):
+        if not text:
+            return ''
+        try:
+            smap = screen_map([s.name() for s in QGuiApplication.screens()])
+        except Exception:
+            smap = {}
+        return redact_text(str(text), smap)
+
+    def _card_notify(self):
+        with self.control_feed_cv:
+            self.control_feed_cv.notify_all()
+
+    def _card_public(self, result):
+        return {k: v for k, v in result.items() if not str(k).startswith('_')}
+
+    def _control_card(self, cmd):
+        if self.cards is None:
+            return {'ok': False, 'error': '控制未开启', 'action': 'card'}
+        op = cmd.get('op') if isinstance(cmd, dict) else None
+        if op not in pet_cards.CARD_SUBS:
+            return {'ok': False, 'error': 'bad args', 'action': 'card'}
+        try:
+            result = self.cards.handle(cmd)
+        except pet_cards.CardError as e:
+            self.control_log_line('control card rejected(%s)' % e.code)
+            for eid in e.expired or []:
+                self._card_show(eid)
+            if cmd.get('cardId'):
+                self._card_show(cmd['cardId'])
+            return {'ok': False, 'error': e.public, 'action': 'card'}
+        except OSError:
+            self.control_log_line('control card rejected(io)')
+            return {'ok': False, 'error': '回执没写成', 'action': 'card'}
+        try:
+            self._card_after(result)
+        except Exception:
+            self.control_log_line('control card rejected(ui)')
+        self.control_log_line('control card %s ok' % op)
+        public = self._card_public(result)
+        public['op'] = op
+        return {'ok': True, 'action': 'card', 'result': public}
+
+    def on_card_button(self, card_id, kind, expected_version):
+        """卡片按钮。先落回执，写成功才改这张卡的样子。"""
+        if kind not in pet_cards.USER_KINDS or self.cards is None or not self._control_open():
+            return None
+        try:
+            result = self.cards.user_act(card_id, kind, expected_version)
+        except pet_cards.CardError as e:
+            self.control_log_line('control card rejected(%s)' % e.code)
+            for eid in e.expired or []:
+                if eid != card_id:
+                    self._card_show(eid)
+            if e.code == 'io':
+                return None
+            self._card_show(card_id, conflict=(e.code == 'conflict'))
+            return None
+        except OSError:
+            self.control_log_line('control card rejected(io)')
+            return None
+        try:
+            self._card_after(result)
+        except Exception:
+            self.control_log_line('control card rejected(ui)')
+        if result.get('already'):
+            self.control_log_line('control card %s already' % kind)
+        else:
+            self.control_log_line('control card %s ok' % kind)
+        return result
+
+    def _card_after(self, result):
+        if not isinstance(result, dict):
+            return
+        cid = result.get('cardId')
+        for eid in result.get('_expired') or []:
+            if eid != cid:
+                self._card_show(eid)
+        if cid:
+            self._card_show(cid)
+        if result.get('_enteredAwaiting'):
+            self._card_nudge()
+        self._card_notify()
+
+    def _card_nudge(self):
+        """待确认才提醒一句。安静或藏着时卡片还在，只是不冒泡。正文不进气泡。"""
+        if self.quiet() or self._control_hidden():
+            return
+        self.show_bubble('有张卡要你看～')
+        self.wake()
+        self.play_expr('smile')
+        self.ext_hold_until = time.time() + EXT_HOLD_SECS
+        self.control_log_line('control card nudge ok')
+
+    def _card_show(self, card_id, conflict=False):
+        book = self.cards
+        if book is None:
+            self._card_close(card_id)
+            return
+        view = book.view(card_id)
+        if view is None or view['phase'] == 'unavailable':
+            self._card_close(card_id)
+            return
+        window = self.card_windows.get(card_id)
+        if window is None:
+            window = TaskCardWindow(self, card_id)
+            self.card_windows[card_id] = window
+        window.render(view, conflict=conflict)
+        self._card_place(window)
+        window.show()
+        window.raise_()
+
+    def _card_place(self, window):
+        ids = list(self.card_windows)
+        try:
+            idx = ids.index(window.card_id)
+        except ValueError:
+            idx = 0
+        try:
+            r = self.sprite_rect()
+            g = self.screen_of(r.center()).availableGeometry()
+        except Exception:
+            return
+        window.adjustSize()
+        x = r.left() - window.width() - 12
+        if x < g.left():
+            x = r.right() + 12
+        y = g.top() + 16 + idx * 26
+        window.move(max(g.left(), min(x, g.right() - window.width())),
+                    max(g.top(), min(y, g.bottom() - window.height())))
+
+    def _card_close(self, card_id):
+        window = self.card_windows.pop(card_id, None)
+        if window is None:
+            return
+        self.fs_aux = [w for w in self.fs_aux if w is not window]
+        window.hide()
+        window.deleteLater()
+
+    def _card_close_all(self):
+        for cid in list(self.card_windows):
+            self._card_close(cid)
+
+    def _card_restore(self):
+        book = self.cards
+        if book is None:
+            return
+        for cid in book.open_ids():
+            self._card_show(cid)
+
+    def _card_expire_tick(self):
+        book = self.cards
+        if book is None or not self._control_open():
+            return
+        try:
+            ids = book.expire_due()
+        except OSError:
+            self.control_log_line('control card rejected(io)')
+            return
+        for cid in ids:
+            self._card_show(cid)
+        if ids:
+            self._card_notify()
+            self.control_log_line('control card expire ok')
 
     def timer_notice(self, ev):
         if ev == 'pomo_focus_end' and self.tray and not self.isVisible() and not self.fs_hidden:
