@@ -6,6 +6,7 @@
 
 覆盖：开关关着时连不上、离线脑照旧；打开后 say 出气泡；错口令拒绝；
 带 Origin 拒绝；安静时 normal 不说。另外核对 Host、优先级、关开关会停监听。
+feedback / wait：点气泡按钮后能读到，wait 能等到，旧游标不重复带出，开关关时连不上。
 """
 import os, sys, json, time, base64, socket, threading, subprocess, tempfile, unittest
 import http.client as http_client
@@ -31,7 +32,8 @@ import pet_control as C
 import pet_platform as P
 import zhanggui_pet as Z
 from PySide6.QtWidgets import QApplication, QMenu
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication, QEvent, QPoint, QPointF, Qt
+from PySide6.QtGui import QMouseEvent
 
 app = QApplication.instance() or QApplication([])
 
@@ -110,19 +112,19 @@ def b64(obj):
     return base64.b64encode(json.dumps(obj, ensure_ascii=False).encode('utf-8')).decode('ascii')
 
 
-def http(port, token, action, payload):
+def http(port, token, action, payload, timeout=5.0):
     """在别的线程里请求，主线程抽事件，避免和界面抢同一条线程。"""
     box = {}
 
     def run():
         try:
-            box['v'] = C.call(port, token, action, payload)
+            box['v'] = C.call(port, token, action, payload, timeout=timeout)
         except Exception as e:
             box['e'] = e
 
     t = threading.Thread(target=run)
     t.start()
-    end = time.time() + 5
+    end = time.time() + timeout + 1
     while t.is_alive() and time.time() < end:
         QCoreApplication.processEvents()
         time.sleep(0.01)
@@ -178,6 +180,27 @@ class T0_Protocol(unittest.TestCase):
         self.assertEqual(C.validate('quiet', {'minutes': 0})[1], 'bad args')
         self.assertEqual(C.validate('line', {'id': 'poke08'})[0]['id'], 'poke08')
         self.assertEqual(C.validate('line', {'id': 'no-such'})[1], 'bad args')
+        self.assertIn('feedback', C.ACTIONS)
+        self.assertIn('wait', C.ACTIONS)
+        cmd, err = C.validate('feedback', {'since': 0})
+        self.assertIsNone(err)
+        self.assertEqual(cmd['since'], 0)
+        self.assertEqual(C.validate('feedback', {})[1], 'bad args')
+        self.assertEqual(C.validate('feedback', {'since': -1})[1], 'bad args')
+        self.assertEqual(C.validate('feedback', {'since': True})[1], 'bad args')
+        self.assertEqual(C.validate('feedback', {'since': 1.5})[1], 'bad args')
+        self.assertEqual(C.validate('feedback', {'since': 0, 'extra': 1})[1], 'bad args')
+        cmd, err = C.validate('wait', {'since': 2, 'timeoutMs': 0})
+        self.assertIsNone(err)
+        self.assertEqual(cmd['timeoutMs'], 0)
+        cmd, err = C.validate('wait', {'since': 0, 'timeoutMs': C.WAIT_MAX_MS})
+        self.assertIsNone(err)
+        self.assertEqual(cmd['timeoutMs'], 25000)
+        self.assertEqual(C.validate('wait', {'since': 0})[1], 'bad args')
+        self.assertEqual(C.validate('wait', {'timeoutMs': 10})[1], 'bad args')
+        self.assertEqual(C.validate('wait', {'since': 0, 'timeoutMs': 25001})[1], 'bad args')
+        self.assertEqual(C.validate('wait', {'since': 0, 'timeoutMs': True})[1], 'bad args')
+        self.assertEqual(C.validate('wait', {'since': 0, 'timeoutMs': 10, 'extra': 1})[1], 'bad args')
 
     def _server(self, dispatch):
         logs = []
@@ -219,6 +242,12 @@ class T0_Protocol(unittest.TestCase):
         self.assertEqual(body['error'], '地址不对')
         unknown = C.call(port, token, 'say', {'text': MARK, 'extra': 1})
         self.assertEqual(unknown['error'], 'bad args')
+        self.assertEqual(seen, [])
+        srv.hits.clear()
+        fb = C.call(port, token, 'feedback', {'since': 0, 'extra': 1})
+        self.assertEqual(fb['error'], 'bad args')
+        wt = C.call(port, token, 'wait', {'since': 0, 'timeoutMs': 25001})
+        self.assertEqual(wt['error'], 'bad args')
         self.assertEqual(seen, [])
         srv.hits.clear()
         self.assertTrue(C.call(port, token, 'status', {})['ok'])
@@ -495,6 +524,190 @@ class T2_On(unittest.TestCase):
         diag = Z.diag_settings(again, {})
         self.assertNotIn('control_enabled', diag)
         self.assertNotIn('control_port', diag)
+
+
+def click_at(pet, point):
+    local = QPoint(point)
+    press = QMouseEvent(QEvent.MouseButtonPress, QPointF(local), QPointF(pet.mapToGlobal(local)),
+                        Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
+    release = QMouseEvent(QEvent.MouseButtonRelease, QPointF(local), QPointF(pet.mapToGlobal(local)),
+                          Qt.LeftButton, Qt.NoButton, Qt.NoModifier)
+    pet.mousePressEvent(press)
+    pet.mouseReleaseEvent(release)
+
+
+def click_option(pet, index):
+    rects = pet.bubble_option_rects()
+    click_at(pet, rects[index].center())
+
+
+class T3_Feedback(unittest.TestCase):
+    def test_click_feedback_wait_and_old_cursor(self):
+        pet = make_pet()
+        try:
+            closed = free_port()
+            publish_port(closed)
+            code, out, err = run_ctl(['feedback', '--json-base64', b64({'since': 0})])
+            self.assertEqual(code, 1, out + err)
+            self.assertEqual(json.loads(out)['error'], '控制未开启')
+            self.assertEqual(err, '')
+            code, out, err = run_ctl(['wait', '--json-base64', b64({'since': 0, 'timeoutMs': 0})])
+            self.assertEqual(code, 1, out + err)
+            self.assertEqual(json.loads(out)['error'], '控制未开启')
+
+            port = enable(pet)
+            token = C.read_token(TMP)
+            pet.bubble = None
+            pet.bubble_options = None
+            body = QPoint(pet.ox + pet.sp.sw // 2, pet.oy + pet.sp.sh // 2)
+            click_at(pet, body)
+            pet.control.hits.clear()
+            quiet = http(port, token, 'feedback', {'since': 0})
+            self.assertTrue(quiet['ok'], quiet)
+            self.assertEqual(quiet['result']['cursor'], 0)
+            self.assertEqual(quiet['result']['clicks'], [])
+
+            label_a, label_b = '甲钮ZZ', '乙钮ZZ'
+            speech = '气泡ZZ正文'
+            pet.bubble = None
+            pet.control.hits.clear()
+            said = http(port, token, 'say', {'text': speech, 'options': [label_a, label_b]})
+            self.assertTrue(said['ok'], said)
+            self.assertEqual(said['result']['status'], 'ok')
+            self.assertIn(speech, pet.bubble[0])
+            self.assertNotIn(label_a, pet.bubble[0])
+            self.assertEqual(pet.bubble_options, (label_a, label_b))
+            rects = pet.bubble_option_rects()
+            self.assertEqual(len(rects), 2)
+            self.assertFalse(rects[0].intersects(rects[1]))
+
+            pet.control.hits.clear()
+            t0 = time.monotonic()
+            timed = http(port, token, 'wait', {'since': 0, 'timeoutMs': 300})
+            elapsed = time.monotonic() - t0
+            self.assertTrue(timed['ok'], timed)
+            self.assertGreaterEqual(elapsed, 0.25)
+            self.assertLess(elapsed, 2.0)
+            self.assertEqual(timed['result']['cursor'], 0)
+            self.assertEqual(timed['result']['clicks'], [])
+
+            spoken = pet.bubble[0]
+            click_option(pet, 0)
+            self.assertEqual(pet.bubble[0], spoken)
+            self.assertEqual(pet.zone, 'option')
+            pet.control.hits.clear()
+            got = http(port, token, 'feedback', {'since': 0})
+            self.assertTrue(got['ok'], got)
+            self.assertEqual(got['result']['cursor'], 1)
+            self.assertEqual(len(got['result']['clicks']), 1)
+            click = got['result']['clicks'][0]
+            self.assertEqual(click['id'], 1)
+            self.assertEqual(click['option'], label_a)
+            self.assertEqual(click['index'], 0)
+            self.assertIsInstance(click['at'], int)
+            pet.control.hits.clear()
+            again = http(port, token, 'feedback', {'since': 0})
+            self.assertEqual(again['result']['clicks'], got['result']['clicks'])
+            pet.control.hits.clear()
+            fresh = http(port, token, 'feedback', {'since': got['result']['cursor']})
+            self.assertEqual(fresh['result']['clicks'], [])
+            self.assertEqual(fresh['result']['cursor'], 1)
+            pet.control.hits.clear()
+            ahead = http(port, token, 'feedback', {'since': 99})
+            self.assertEqual(ahead['result']['clicks'], [])
+            self.assertEqual(ahead['result']['cursor'], 1)
+
+            t0 = time.monotonic()
+            pet.control.hits.clear()
+            immediate = http(port, token, 'wait', {'since': 0, 'timeoutMs': 2000})
+            self.assertLess(time.monotonic() - t0, 1.0)
+            self.assertEqual(len(immediate['result']['clicks']), 1)
+            self.assertEqual(immediate['result']['clicks'][0]['option'], label_a)
+
+            box = {}
+
+            def run_wait():
+                box['t0'] = time.monotonic()
+                box['v'] = C.call(port, token, 'wait', {'since': 1, 'timeoutMs': 5000}, timeout=8)
+                box['t1'] = time.monotonic()
+
+            pet.control.hits.clear()
+            waiter = threading.Thread(target=run_wait)
+            waiter.start()
+            end = time.monotonic() + 0.35
+            while time.monotonic() < end:
+                QCoreApplication.processEvents()
+                time.sleep(0.01)
+            click_option(pet, 1)
+            while waiter.is_alive() and time.monotonic() < end + 6:
+                QCoreApplication.processEvents()
+                time.sleep(0.01)
+            waiter.join(1)
+            self.assertFalse(waiter.is_alive())
+            waited = box['v']
+            self.assertTrue(waited['ok'], waited)
+            self.assertGreaterEqual(box['t1'] - box['t0'], 0.3)
+            self.assertLess(box['t1'] - box['t0'], 3.0)
+            self.assertEqual(waited['result']['cursor'], 2)
+            self.assertEqual(len(waited['result']['clicks']), 1)
+            self.assertEqual(waited['result']['clicks'][0]['id'], 2)
+            self.assertEqual(waited['result']['clicks'][0]['option'], label_b)
+            self.assertEqual(waited['result']['clicks'][0]['index'], 1)
+            self.assertNotIn(label_a, json.dumps(waited['result']['clicks'], ensure_ascii=False))
+
+            pet.control.hits.clear()
+            code, out, err = run_ctl(['feedback', '--json-base64', b64({'since': 1})])
+            self.assertEqual(code, 0, out + err)
+            self.assertEqual(err, '')
+            via_ctl = json.loads(out)
+            self.assertEqual(via_ctl['action'], 'feedback')
+            self.assertEqual(via_ctl['result']['cursor'], 2)
+            self.assertEqual([c['option'] for c in via_ctl['result']['clicks']], [label_b])
+
+            pet.control.hits.clear()
+            code, out, err = run_ctl(['feedback', '--json-base64', b64({'since': 0, 'extra': 1})])
+            self.assertEqual(code, 1, out + err)
+            self.assertEqual(json.loads(out)['error'], 'bad args')
+            pet.control.hits.clear()
+            code, out, err = run_ctl(['wait', '--json-base64', b64({'since': 0, 'timeoutMs': 25001})])
+            self.assertEqual(code, 1, out + err)
+            self.assertEqual(json.loads(out)['error'], 'bad args')
+
+            pet.control.hits.clear()
+            status = http(port, token, 'status', {})
+            self.assertEqual(status['result']['cursor'], 2)
+
+            blob = log_text(pet)
+            self.assertIn('control feedback noted', blob)
+            self.assertIn('control feedback ok', blob)
+            self.assertIn('control wait ok', blob)
+            self.assertNotIn(token, blob)
+            self.assertNotIn(speech, blob)
+            self.assertNotIn(label_a, blob)
+            self.assertNotIn(label_b, blob)
+            path = pet.export_log()
+            with open(path, encoding='utf-8') as f:
+                exported = f.read()
+            self.assertNotIn(token, exported)
+            self.assertNotIn(speech, exported)
+            self.assertNotIn(label_a, exported)
+            self.assertNotIn(label_b, exported)
+
+            cursor_before = pet.control_cursor
+            click_at(pet, body)
+            self.assertEqual(pet.control_cursor, cursor_before)
+
+            self.assertTrue(pet.set_control_enabled(False) is False)
+            gone = C.call(port, token, 'feedback', {'since': 0})
+            self.assertEqual(gone['error'], '控制未开启')
+            code, out, err = run_ctl(['wait', '--json-base64', b64({'since': 0, 'timeoutMs': 0})])
+            self.assertEqual(code, 1, out + err)
+            self.assertEqual(json.loads(out)['error'], '控制未开启')
+            code, out, err = run_ctl(['feedback', '--json-base64', b64({'since': 0})])
+            self.assertEqual(code, 1, out + err)
+            self.assertEqual(json.loads(out)['error'], '控制未开启')
+        finally:
+            stop(pet)
 
 
 def _texts(menu):

@@ -159,6 +159,15 @@ python3 tools/pet_ctl.py say --json-base64 <上面的输出>
 
 成功是一行 `{"ok": true, ...}`；失败同样是一行 JSON，进程退出码 1。带浏览器 `Origin` 的请求会拒绝，`Host` 也必须是 `127.0.0.1:端口`。
 
+`say` 可以带最多 3 个按钮（`options`，每个不超过 10 个字）。你点了哪个，用 `feedback` / `wait` 读：
+
+```bash
+python3 tools/pet_ctl.py feedback --json-base64 <{"since":0} 的 base64>
+python3 tools/pet_ctl.py wait --json-base64 <{"since":0,"timeoutMs":25000} 的 base64>
+```
+
+`since` 是游标。返回里的 `result.cursor` 是目前最新的点击序号，`result.clicks` 只含序号比 `since` 大的点击（`id`、`option`、`index`、`at`）。这是只读：同一个 `since` 再读一次，结果一样；把 `since` 设成上次的 `cursor`，旧点击不会再出现。`wait` 最多等 `timeoutMs` 毫秒（0–25000），有新点击立刻返回；超时也返回当前游标，退出码 0。日志不记口令，也不记气泡正文和按钮上的字。任务卡不在这一期。
+
 测试（不需要真屏幕）：`QT_QPA_PLATFORM=offscreen python tests/test_control_m1.py`。
 
 ## v0.3.6 更新（详见 `CHANGELOG.md`）
