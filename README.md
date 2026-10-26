@@ -125,6 +125,7 @@ spec 里已经写好排除的 Qt 模块、图标和 exe 版本信息（产品名
 | `pet_lines.py` | **台词库**（改台词只改这里；`python pet_lines.py` 会检查 id 重复和禁用词） |
 | `pet_platform.py` | 设置、日志、空闲时间、全屏检测、开机自启、语音播放 |
 | `pet_brain.py` | 选台词（冷却 + 权重）；v0.4 联网模块的接口说明 |
+| `pet_control.py`、`tools/pet_ctl.py` | 本机助手通道（实验，默认关）。见下方说明 |
 | `assets/sprites/` | 透明精灵帧（251×380，12fps，432 帧；`tools/export_sprites.py` 导出） |
 | `assets/peek/` | 躲屏幕边的立绘（251×380）：左右各两张（害羞 / 探头），上、下各一张探头图（害羞往屏幕外缩，见 `peek.json`）。`@2x/` 是同一套 502×760，屏幕缩放大于 100% 时用，贴边仍按 251×380 |
 | `assets/masks/` | 每段动画的并集遮罩（`tools/make_assets.py` 生成） |
@@ -141,6 +142,24 @@ spec 里已经写好排除的 Qt 模块、图标和 exe 版本信息（产品名
 
 ## 调试用环境变量（平时用不到）
 `ZHANGGUI_PET_DEBUG=1` 打印日志；`ZHANGGUI_PET_HOLD=秒` 表情停留时间；`ZHANGGUI_PET_AWAY_SECS=秒` 多久算离开；`ZHANGGUI_PET_ORDER=台词id,…` 固定台词顺序（录视频用）；`ZHANGGUI_PET_AUTOQUIT=秒`；`ZHANGGUI_PET_CONFIG_DIR=路径`；`ZHANGGUI_PET_NOMASK=1`；测试用的 `ZHANGGUI_PET_SIM_FULLSCREEN_FILE`、`ZHANGGUI_PET_SIM_IDLE_FILE`、`ZHANGGUI_PET_CMD_FILE`、`ZHANGGUI_PET_NO_AUDIO`、`ZHANGGUI_PET_NO_OPEN`，只有设置了才生效。`ZHANGGUI_PET_CMD_FILE` 只在源码运行时有效（打包后的 exe 完全不读），而且只认白名单动作（`pat`、`poke`、`scale 0.8`、`line <台词id>`、`timer_remaining 3` 等，见 `zhanggui_pet.py` 的 `DEV_ACTIONS`），不执行任何代码。
+
+## 本机助手控制（实验，默认关）
+
+粉丝下载的版本仍然纯离线。这个开关默认关，打包后的程序里菜单默认不出现。
+
+源码运行时，右键或托盘菜单有「高级 → 允许本机助手控制我（实验）」。勾上之后，她只在 `127.0.0.1` 上听（默认端口 **6710**，可在 `settings.json` 里改 `control_port`）。口令写在配置目录的 `control_token`（权限 600），`pet_ctl` 会自己读，不要贴到聊天里。取消勾选会真的关掉监听，并丢掉还没说的外部台词。
+
+打包版要先在 `settings.json` 里把 `show_control_menu` 设为 `true`，菜单里才会出现「高级」。`control_enabled` 默认 `false`。
+
+```bash
+python3 tools/pet_ctl.py status
+python3 -c 'import json,base64; print(base64.b64encode(json.dumps({"text":"今天也辛苦啦。","expr":"smile"}, ensure_ascii=False).encode()).decode())'
+python3 tools/pet_ctl.py say --json-base64 <上面的输出>
+```
+
+成功是一行 `{"ok": true, ...}`；失败同样是一行 JSON，进程退出码 1。带浏览器 `Origin` 的请求会拒绝，`Host` 也必须是 `127.0.0.1:端口`。
+
+测试（不需要真屏幕）：`QT_QPA_PLATFORM=offscreen python tests/test_control_m1.py`。
 
 ## v0.3.6 更新（详见 `CHANGELOG.md`）
 

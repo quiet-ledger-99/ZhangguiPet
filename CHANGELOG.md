@@ -1,5 +1,13 @@
 # 更新记录
 
+## 未发布 · 本机助手通道（M1）
+
+- 菜单「高级 → 允许本机助手控制我（实验）」。默认关。源码运行看得到；打包后的粉丝版默认不显示这项，要在设置里把 `show_control_menu` 写成 true 才出现。
+- 打开后只听 `127.0.0.1`（默认 **6710**，设置项 `control_port`）。口令在配置目录 `control_token`（权限 600）。关掉会停止监听并清空还没说的队列。
+- 命令：`python3 tools/pet_ctl.py status`，`python3 tools/pet_ctl.py say --json-base64 …`。失败输出 `{"ok":false,...}`，退出码 1。
+- 安静时外部 `normal` 不说（`skipped:quiet`）；`important` 只出气泡不出声。外部 `normal` 不抢计时、戳她和离线脑的话。
+- 测试：`QT_QPA_PLATFORM=offscreen python tests/test_control_m1.py`。
+
 ## v0.3.10（2026-10-25）
 
 ### 右探头白缝与探头 @2x
