@@ -74,6 +74,17 @@ QT_QPA_PLATFORM=offscreen python tests/test_control_m1.py
 
 开关关着时不监听，离线脑（`brain_tick` / 点她）和以前一样。日志只记 `control say ok` 这种类别，不记台词和口令。
 
+## 任务卡确认流（M2，默认关）
+
+版本号仍是 0.3.10。粉丝包（打包后的 .app）默认还是没有「高级」菜单，除非 `show_control_menu` 为 true。
+
+打开本机通道之后，助手用 `pet_ctl card draft|prepare|receipt|report|withdraw --json-base64 …`。没有 `confirm`。你在任务卡上点「确认 / 改一下 / 不要」。回执写在配置目录的 `receipts.jsonl`（只追加，不进诊断导出）：
+
+```bash
+python3 tools/pet_ctl.py card draft --json-base64 <标准 base64 的 UTF-8 JSON>
+QT_QPA_PLATFORM=offscreen python tests/test_control_m2.py
+```
+
 ## 权限
 
 - 运行不需要“屏幕录制”或“辅助功能”权限（空闲检测用的 CGEventSource 不要权限；不读别的窗口）。
