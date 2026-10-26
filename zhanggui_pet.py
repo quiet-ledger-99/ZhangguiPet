@@ -4,7 +4,8 @@
 完全离线：不联网、不要任何 key、不监听键盘、不打开/移动/删除你的文件。
 依赖：PySide6（Essentials 即可）。运行：python zhanggui_pet.py
 台词在 pet_lines.py；系统相关（设置、全屏检测、空闲时间、自启、语音）在 pet_platform.py；
-“说什么”的接口在 pet_brain.py（v0.4 的可选联网聊天/TTS 从这里接）。"""
+“说什么”的接口在 pet_brain.py（v0.4 的可选联网聊天/TTS 从这里接）。
+本机助手通道（pet_control，菜单「高级」，默认关）只听 127.0.0.1；关着时不监听，离线脑路径不变。"""
 import os, sys, json, random, time, datetime, traceback, math
 
 VERSION = '0.3.10'
@@ -90,7 +91,7 @@ def _excepthook(et, ev, tb):
 sys.excepthook = _excepthook
 from collections import OrderedDict
 from PySide6.QtCore import (Qt, QTimer, QPoint, QRect, QRectF, QPointF, QPropertyAnimation,
-                            QEasingCurve, QUrl, QEvent, qVersion)
+                            QEasingCurve, QUrl, QEvent, QObject, Signal, qVersion)
 from PySide6.QtGui import (QImage, QPainter, QRegion, QBitmap, QFont, QFontMetrics, QColor, QPainterPath, QPen,
                            QAction, QActionGroup, QGuiApplication, QIcon, QCursor, QDesktopServices)
 from PySide6.QtWidgets import (QApplication, QWidget, QMenu, QSystemTrayIcon, QWidgetAction, QSlider, QLabel,
@@ -99,6 +100,7 @@ from PySide6.QtWidgets import (QApplication, QWidget, QMenu, QSystemTrayIcon, QW
 import pet_lines as PL
 import pet_platform as P
 import pet_macos as MAC
+import pet_control
 from pet_brain import LocalBrain
 
 BASE = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
@@ -170,6 +172,11 @@ MICRO = {'off': None, 'low': (240, 480), 'mid': (90, 200), 'high': (35, 80)}
 MICRO_NAMES = [('off', '关'), ('low', '偶尔（4～8 分钟）'), ('mid', '适中（1.5～3 分钟）'), ('high', '经常（半分钟～1 分多）')]
 # 同一秒有好几件事想说时的优先级（数字小的先说）
 PRIO_TIMER, PRIO_RETURN, PRIO_STAND, PRIO_WATER, PRIO_SLOT = 0, 1, 2, 3, 4
+# 外部播报只在「允许本机助手控制我」打开时才会进候选。important 介于计时和回来啦之间；
+# normal 比时段问候还低，不抢离线脑和你戳她的话。
+PRIO_EXT_IMPORTANT, PRIO_EXT_NORMAL = 0.5, 5
+EXT_HOLD_SECS = 8          # 外部说完之后这么多秒内，喝水/久坐不插嘴
+CONTROL_QUEUE_MAX = 5
 PENDING_MAX_SECS = 90     # 被挤掉的一次性事件最多等这么久，过了就不补了
 # 安静多久由菜单决定，不写死一小时。自定义分钟数必须落在这个闭区间里。
 QUIET_PRESETS = ((15, '15 分钟'), (30, '30 分钟'), (60, '1 小时'))
@@ -653,6 +660,24 @@ class TimerPanel(QWidget):
 
 
 # ======================= 桌宠本体 =======================
+class _ControlBridge(QObject):
+    """把网络线程上的动作排回主线程。队列连接，不在网络线程里碰界面。"""
+    incoming = Signal(object)
+
+    def __init__(self, pet):
+        super().__init__(pet)
+        self._pet = pet
+        self.incoming.connect(self._on, Qt.QueuedConnection)
+
+    def _on(self, payload):
+        cmd, box = payload
+        try:
+            box.put(self._pet._control_handle(cmd))
+        except Exception:
+            action = cmd.get('action') if isinstance(cmd, dict) else None
+            box.put({'ok': False, 'error': 'bad args', 'action': action})
+
+
 class Pet(QWidget):
     def __init__(self, conf, log, st, lock):
         self.st, self.log, self.conf, self.lock = st, log, conf, lock     # conf 可能是 None（只用内存）
@@ -751,6 +776,12 @@ class Pet(QWidget):
         self.session_start = time.time()
         self.last_stand = time.time(); self.last_water = time.time()
         self.was_quiet = self.quiet()
+        self.control = None
+        self.control_q = []
+        self.control_deferred = None
+        self.control_seq = 0
+        self.ext_hold_until = 0.0
+        self._control_bridge = None
         self.greeted = set()
         slot = PL.current_slot()
         if slot:
@@ -765,6 +796,10 @@ class Pet(QWidget):
         app.screenRemoved.connect(lambda *_: QTimer.singleShot(800, self.ensure_visible))
         log(f'start v{VERSION}', P.system_summary(), f'Qt {qVersion()}', f'scale {self.sp.s:.2f}',
             'voice', 'yes' if self.voice.available() else 'none')
+        if self.st.get('control_enabled'):
+            if not self._control_start():
+                self.st['control_enabled'] = False
+                self.save_later()
 
     # ---------- 尺寸 / 位置 ----------
     def apply_scale(self, s, keep_anchor=True):
@@ -1810,6 +1845,12 @@ class Pet(QWidget):
             act('开机自动启动（仅 Windows / macOS）', enabled=False)
         act('导出诊断日志', self.export_log)
         act('关于…', self.show_about)
+        if self.control_menu_visible():
+            adv = m.addMenu('高级')
+            act('允许本机助手控制我（实验）', self.set_control_enabled,
+                checked=bool(self.st.get('control_enabled')), menu=adv)
+            act('重新生成口令', self.control_rotate_token,
+                enabled=bool(self.st.get('control_enabled')), menu=adv)
         m.addSeparator()
         act('退出', QApplication.quit)
 
@@ -2098,12 +2139,14 @@ class Pet(QWidget):
                     cands.append(dict(prio=PRIO_RETURN, cat=cat, proactive=True, oneshot=True))
         active = not self.away
         calm = not self.bubble and not self.dragging and self.press_pos is None   # 不打断正在显示的话、正在进行的操作
+        # 开关关着时 ext_hold 恒为假，下面两个条件和 v0.3.10 一样。开着且外部刚说完，喝水/久坐让一让。
+        ext_hold = bool(self.st.get('control_enabled')) and now < self.ext_hold_until
         # 提醒（默认关）。被别的话挤掉、或因为安静/隐藏没说出口的，不算已提醒：之后条件满足时再说
         if active and self.st['remind_stand'] and now - self.session_start > self.st['stand_min'] * 60 \
-                and now - self.last_stand > self.st['stand_min'] * 60 and calm:
+                and now - self.last_stand > self.st['stand_min'] * 60 and calm and not ext_hold:
             cands.append(dict(prio=PRIO_STAND, cat='stand', proactive=True, oneshot=False,
                               commit=lambda: setattr(self, 'last_stand', time.time())))
-        if active and self.st['remind_water'] and now - self.last_water > self.st['water_min'] * 60 and calm:
+        if active and self.st['remind_water'] and now - self.last_water > self.st['water_min'] * 60 and calm and not ext_hold:
             cands.append(dict(prio=PRIO_WATER, cat='water', proactive=True, oneshot=False,
                               commit=lambda: setattr(self, 'last_water', time.time())))
         # 按时段问候：真的说出口了才记“今天这个时段问候过了”
@@ -2121,6 +2164,8 @@ class Pet(QWidget):
             elif calm or pe[0] == PRIO_TIMER:
                 cands.append(dict(prio=pe[0], cat=pe[1], proactive=pe[2], oneshot=True, pending=True,
                                   commit=(lambda c=pe[1]: self.timer_notice(c)) if pe[0] == PRIO_TIMER else None))
+        if self.st.get('control_enabled'):
+            self._control_offer(cands, now, calm)
         self.run_candidates(cands, now)
         # 深夜打盹
         h = PL.hour_f()
@@ -2157,20 +2202,368 @@ class Pet(QWidget):
         for i, c in enumerate(cands):
             if c.get('pending'):
                 self.pending_ev = None
-            line = self.say(c['cat'], proactive=c['proactive'])
-            if line is not None:
+            if c.get('external') and self.st.get('control_enabled'):
+                if not self._control_show_queued(c['external']):
+                    continue
                 shown = c
-                if c.get('commit'):
-                    c['commit']()
-                rest = [x for x in cands[i + 1:] if x.get('oneshot') and not x.get('pending')]
-                if rest:
-                    r = rest[0]
-                    if self.pending_ev is None or r['prio'] < self.pending_ev[0]:
-                        self.pending_ev = (r['prio'], r['cat'], r['proactive'], now)
-                        self.log('event deferred', r['cat'])
-                break
-            # 没说出口（安静模式、藏着、台词都在冷却）：一次性事件就此放弃，条件型提醒下次再试
+            else:
+                line = self.say(c['cat'], proactive=c['proactive'])
+                if line is not None:
+                    shown = c
+                    if c.get('commit'):
+                        c['commit']()
+                else:
+                    # 没说出口（安静模式、藏着、台词都在冷却）：一次性事件就此放弃，条件型提醒下次再试
+                    continue
+            rest = [x for x in cands[i + 1:] if x.get('oneshot') and not x.get('pending')]
+            if rest:
+                r = rest[0]
+                if self.pending_ev is None or r['prio'] < self.pending_ev[0]:
+                    self.pending_ev = (r['prio'], r['cat'], r['proactive'], now)
+                    self.log('event deferred', r['cat'])
+            break
         return shown['cat'] if shown else None
+
+    # ---------- 本机助手通道（默认关；关着时上面的 brain_tick 不会进这里） ----------
+    def control_menu_visible(self):
+        """源码/开发运行显示「高级」。打包后的粉丝版默认藏起来，设置里 show_control_menu 为真才出现。"""
+        if not getattr(sys, 'frozen', False):
+            return True
+        return bool(self.st.get('show_control_menu'))
+
+    def control_log_line(self, text):
+        """只记类别。再过一遍 redact_text，避免哪天把路径拼进来。"""
+        try:
+            smap = screen_map([s.name() for s in QGuiApplication.screens()])
+        except Exception:
+            smap = {}
+        self.log(redact_text(str(text), smap))
+
+    def set_control_enabled(self, on):
+        on = bool(on)
+        if on == bool(self.st.get('control_enabled')) and (self.control is not None) == on:
+            return on
+        self.st['control_enabled'] = on
+        self.save_later()
+        self.st.save()
+        self.log('opt', 'control_enabled', on)
+        if on:
+            if self._control_start():
+                self.show_bubble('好，这台电脑上的助手可以叫我啦。只听本机。')
+                return True
+            self.st['control_enabled'] = False
+            self.st.save()
+            self.show_bubble('本机通道这次没能打开。')
+            return False
+        self._control_stop()
+        self.show_bubble('好，我不再听旁边的助手了。')
+        return False
+
+    def control_rotate_token(self, _checked=False):
+        if not self.st.get('control_enabled') or not self.conf:
+            return False
+        try:
+            token = pet_control.write_token(self.conf, force=True)
+        except OSError:
+            self.control_log_line('control token rejected(bind)')
+            self.show_bubble('口令这次没能换掉。')
+            return False
+        if self.control is not None:
+            self.control.set_token(token)
+        self.control_log_line('control token rotated')
+        self.show_bubble('本机口令已经换过啦。')
+        return True
+
+    def _control_start(self):
+        if self.control is not None and self.control.accepting:
+            return True
+        self._control_stop()
+        if not self.conf:
+            self.control_log_line('control rejected(bind)')
+            return False
+        try:
+            token = pet_control.write_token(self.conf)
+        except OSError:
+            self.control_log_line('control rejected(bind)')
+            return False
+        if self._control_bridge is None:
+            self._control_bridge = _ControlBridge(self)
+        port = self.st.get('control_port', pet_control.DEFAULT_PORT)
+        try:
+            port = int(port)
+        except (TypeError, ValueError):
+            port = pet_control.DEFAULT_PORT
+        try:
+            srv = pet_control.ControlServer(port, token, self._control_dispatch, self.control_log_line)
+            srv.start()
+        except OSError:
+            self.control_log_line('control rejected(bind)')
+            return False
+        self.control = srv
+        self.control_log_line('control listen ok')
+        return True
+
+    def _control_stop(self):
+        self.control_q = []
+        self.control_deferred = None
+        srv = self.control
+        self.control = None
+        if srv is not None:
+            srv.accepting = False
+            srv.stop(pump=QApplication.processEvents)
+            self.control_log_line('control listen stopped')
+
+    def _control_dispatch(self, cmd):
+        import queue as _queue
+        if self._control_bridge is None:
+            return self._control_handle(cmd)
+        box = _queue.Queue(1)
+        self._control_bridge.incoming.emit((cmd, box))
+        try:
+            return box.get(timeout=4)
+        except _queue.Empty:
+            return {'ok': False, 'error': '控制未开启', 'action': cmd.get('action') if isinstance(cmd, dict) else None}
+
+    def _control_handle(self, cmd):
+        action = cmd.get('action') if isinstance(cmd, dict) else None
+        if not self.st.get('control_enabled') or self.control is None or not self.control.accepting:
+            return {'ok': False, 'error': '控制未开启', 'action': action}
+        if action == 'status':
+            self.control_log_line('control status ok')
+            return {'ok': True, 'action': 'status', 'result': self._control_status()}
+        if action == 'quiet':
+            return self._control_quiet(cmd.get('minutes'))
+        if action == 'hide':
+            self._control_hide()
+            self.control_log_line('control hide ok')
+            return {'ok': True, 'action': 'hide', 'result': {'status': 'ok'}}
+        if action == 'show':
+            self._control_show_pet()
+            self.control_log_line('control show ok')
+            return {'ok': True, 'action': 'show', 'result': {'status': 'ok'}}
+        if action in ('expr', 'peek'):
+            return self._control_simple(cmd)
+        if action in ('say', 'line'):
+            return self._control_accept_speech(cmd)
+        return {'ok': False, 'error': 'bad args', 'action': action}
+
+    def _control_status(self):
+        return {
+            'enabled': True,
+            'quiet': bool(self.quiet()),
+            'hidden': bool(self.user_hidden or not self.isVisible()),
+            'fullscreen': bool(self.fs_hidden),
+            'cursor': 0,
+        }
+
+    def _control_busy(self):
+        return bool(self.dragging or self.patting or self.press_pos is not None)
+
+    def _control_hidden(self):
+        return bool(self.user_hidden or self.fs_hidden or self.hide_pending or not self.isVisible())
+
+    def _timer_due(self):
+        t = self.timer
+        if not t.running:
+            return False
+        e = t.elapsed()
+        if t.mode == 'pomo':
+            return e >= t.phase_len()
+        return e >= t.next_ms
+
+    def _offline_blocking_prio(self, now):
+        """这一拍离线脑会不会开口。只读，不改计时器、不改「已经提醒过」。开关关着时没人调用。"""
+        best = None
+
+        def consider(p):
+            nonlocal best
+            if best is None or p < best:
+                best = p
+
+        if self._timer_due() or (self.pending_ev and self.pending_ev[0] == PRIO_TIMER):
+            consider(PRIO_TIMER)
+        calm = not self.bubble and not self.dragging and self.press_pos is None
+        active = not self.away
+        hold = bool(self.st.get('control_enabled')) and now < self.ext_hold_until
+        if active and self.st['remind_stand'] and now - self.session_start > self.st['stand_min'] * 60 \
+                and now - self.last_stand > self.st['stand_min'] * 60 and calm and not hold:
+            consider(PRIO_STAND)
+        if active and self.st['remind_water'] and now - self.last_water > self.st['water_min'] * 60 and calm and not hold:
+            consider(PRIO_WATER)
+        slot = PL.current_slot()
+        if slot and self.st['time_greet'] and active and now - self.t_start > 60 and calm:
+            key = datetime.date.today().isoformat() + slot
+            if key not in self.greeted:
+                consider(PRIO_SLOT)
+        pe = self.pending_ev
+        if pe is not None and now - pe[3] <= PENDING_MAX_SECS and (calm or pe[0] == PRIO_TIMER):
+            consider(pe[0])
+        return best
+
+    def _speech_blocked(self, cmd):
+        prio = self._offline_blocking_prio(time.time())
+        if prio is None:
+            return False
+        if cmd.get('priority') == 'important':
+            return prio <= PRIO_TIMER
+        return True
+
+    def _control_enqueue(self, item):
+        item = dict(item)
+        if 'seq' not in item:
+            self.control_seq += 1
+            item['seq'] = self.control_seq
+        seq = item['seq']
+        self.control_q = [x for x in self.control_q if x.get('seq') != seq]
+        self.control_q.append(item)
+        overflow = len(self.control_q) - CONTROL_QUEUE_MAX
+        if overflow > 0:
+            del self.control_q[:overflow]
+        return item
+
+    def _control_accept_speech(self, cmd):
+        action = cmd['action']
+        if self.quiet() and cmd.get('priority') != 'important':
+            self.control_log_line('control %s skipped(quiet)' % action)
+            return {'ok': True, 'action': action, 'result': {'status': 'skipped:quiet'}}
+        if self._control_hidden():
+            self.control_deferred = dict(cmd)
+            self.control_log_line('control %s queued' % action)
+            return {'ok': True, 'action': action, 'result': {'status': 'queued'}}
+        if self._control_busy() or self.bubble or self._speech_blocked(cmd):
+            self._control_enqueue(cmd)
+            self.control_log_line('control %s queued' % action)
+            return {'ok': True, 'action': action, 'result': {'status': 'queued'}}
+        shown = self._control_show_speech(cmd)
+        if not shown:
+            return {'ok': False, 'error': 'bad args', 'action': action}
+        return {'ok': True, 'action': action, 'result': shown}
+
+    def _control_show_speech(self, cmd):
+        voice_requested = bool(cmd.get('voice'))
+        voice_id = None
+        if cmd.get('action') == 'line':
+            line = pet_control.line_by_id(cmd.get('id'))
+            if line is None:
+                self.control_log_line('control line rejected(bad args)')
+                return None
+            text, expr, voice_id = line.text, line.expr, line.id
+        else:
+            text, expr = cmd.get('text') or '', cmd.get('expr')
+        if cmd.get('source'):
+            text = text + '\n· ' + cmd['source']
+        if cmd.get('options'):
+            text = text + '\n' + '｜'.join(cmd['options'])
+        self.show_bubble(text)
+        if expr:
+            self.wake()
+            self.play_expr(expr)
+        played = False
+        if voice_requested and voice_id and not self.quiet() and not self.st['muted'] and not self.fs_hidden:
+            played = bool(self.voice.play(voice_id, self.st['volume']))
+        self.ext_hold_until = time.time() + EXT_HOLD_SECS
+        self.control_log_line('control %s ok' % cmd.get('action'))
+        result = {'status': 'ok', 'shown': True}
+        if voice_requested:
+            result['voice'] = 'played' if played else 'skipped'
+        return result
+
+    def _control_apply_silent(self, cmd):
+        if cmd.get('action') == 'expr':
+            self.wake()
+            self.play_expr(cmd['expr'])
+            return
+        side = cmd.get('side')
+        if side == 'off':
+            self.leave_peek()
+            self.ensure_visible()
+            self.save_position()
+            return
+        if side == 'nearest':
+            side = self.nearest_side()
+        self.apply_peek(side)
+        self.save_position()
+
+    def _control_simple(self, cmd):
+        action = cmd['action']
+        if self._control_busy() or self._control_hidden():
+            self._control_enqueue(cmd)
+            self.control_log_line('control %s queued' % action)
+            return {'ok': True, 'action': action, 'result': {'status': 'queued'}}
+        self._control_apply_silent(cmd)
+        self.control_log_line('control %s ok' % action)
+        return {'ok': True, 'action': action, 'result': {'status': 'ok'}}
+
+    def _control_quiet(self, minutes):
+        if self.quiet():
+            remain = float(self.st['quiet_until']) - time.time()
+            if minutes * 60 <= remain + 0.5:
+                self.control_log_line('control quiet rejected(shorter)')
+                return {'ok': False, 'error': '只能更安静', 'action': 'quiet'}
+        if not self.start_quiet(minutes):
+            self.control_log_line('control quiet rejected(bad args)')
+            return {'ok': False, 'error': 'bad args', 'action': 'quiet'}
+        self.control_log_line('control quiet ok')
+        return {'ok': True, 'action': 'quiet', 'result': {'status': 'ok', 'minutes': minutes}}
+
+    def _control_hide(self):
+        if not self.isVisible() or self.user_hidden:
+            self.user_hidden = True
+            self.hide_pending = False
+            self.apply_visibility()
+            return
+        self.toggle_hidden()
+
+    def _control_show_pet(self):
+        if self.user_hidden or self.hide_pending or self.fs_hidden or not self.isVisible():
+            self.toggle_hidden()
+
+    def _control_flush_silent(self):
+        if self._control_busy() or self._control_hidden():
+            return
+        kept = []
+        for item in self.control_q:
+            if item.get('action') in ('expr', 'peek'):
+                self._control_apply_silent(item)
+                self.control_log_line('control %s ok' % item.get('action'))
+            else:
+                kept.append(item)
+        self.control_q = kept
+
+    def _control_offer(self, cands, now, calm):
+        self._control_flush_silent()
+        if self.control_deferred is not None and not self._control_hidden():
+            self._control_enqueue(self.control_deferred)
+            self.control_deferred = None
+        if self._control_busy() or self._control_hidden() or not calm:
+            return
+        speech = [it for it in self.control_q if it.get('action') in ('say', 'line')]
+        if not speech:
+            return
+        item = min(speech, key=lambda it: (0 if it.get('priority') == 'important' else 1, it.get('seq', 0)))
+        if self.quiet() and item.get('priority') != 'important':
+            self.control_q = [x for x in self.control_q if x.get('seq') != item.get('seq')]
+            self.control_log_line('control %s skipped(quiet)' % item.get('action'))
+            return
+        prio = PRIO_EXT_IMPORTANT if item.get('priority') == 'important' else PRIO_EXT_NORMAL
+        # oneshot 留给离线的一次性事件。外部台词自己排在 control_q 里，不能写进 pending_ev。
+        cands.append(dict(prio=prio, cat=None, proactive=False, oneshot=False, external=item))
+
+    def _control_show_queued(self, item):
+        self.control_q = [x for x in self.control_q if x.get('seq') != item.get('seq')]
+        if self._control_busy() or self._control_hidden() or self.bubble:
+            if self._control_hidden() and item.get('action') in ('say', 'line'):
+                self.control_deferred = item
+            else:
+                self._control_enqueue(item)
+            return False
+        if item.get('action') in ('say', 'line'):
+            if self.quiet() and item.get('priority') != 'important':
+                self.control_log_line('control %s skipped(quiet)' % item.get('action'))
+                return False
+            return self._control_show_speech(item) is not None
+        self._control_apply_silent(item)
+        return True
 
     def timer_notice(self, ev):
         if ev == 'pomo_focus_end' and self.tray and not self.isVisible() and not self.fs_hidden:
@@ -2361,7 +2754,7 @@ def main():
             st['storage_notice'] = kind
             pet.save_later()
         QTimer.singleShot(14000 if not st['first_run_done'] else 7000, storage_note)
-    app.aboutToQuit.connect(lambda: (pet.save_position(), st.save(), log('quit')))
+    app.aboutToQuit.connect(lambda: (pet._control_stop(), pet.save_position(), st.save(), log('quit')))
     secs = float(ENV('ZHANGGUI_PET_AUTOQUIT', '0'))
     if secs > 0:
         QTimer.singleShot(int(secs * 1000), app.quit)

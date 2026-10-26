@@ -373,9 +373,12 @@ DEFAULTS = {
     'peek_side': '',         # '' / 'left' / 'right'
     'storage_notice': '',    # 已经提示过的“设置换地方保存”种类（只提示一次）
     'lowil_notice': '',      # v0.3.9 ilfix：已经提示过“低权限运行”的程序文件夹指纹（同一个文件夹只提示一次）
+    'control_enabled': False,    # 本机助手控制（实验）。默认关；关着时不监听
+    'show_control_menu': False,  # 打包版里改成 true，菜单才会出现「高级」。源码运行不看这个
+    'control_port': 6710,        # 只绑 127.0.0.1。口令不写在这里，写在旁边的 control_token
 }
 RANGES = {'scale': (0.2, 1.5), 'scale_legs': (0.2, 1.5), 'volume': (0.0, 1.0), 'water_min': (10, 240), 'stand_min': (20, 240),
-          'pomo_focus': (1, 180), 'pomo_break': (1, 60)}
+          'pomo_focus': (1, 180), 'pomo_break': (1, 60), 'control_port': (1024, 65535)}
 CHOICES = {'micro': ('off', 'low', 'mid', 'high'), 'peek_side': ('', 'left', 'right')}
 
 

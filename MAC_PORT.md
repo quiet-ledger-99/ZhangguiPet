@@ -62,6 +62,18 @@ cd src && ../.venv/bin/python zhanggui_pet.py
 - 只打了 arm64；Intel Mac 需要另打或 universal2（PySide6 wheel 需要对应架构）。
 - 多显示器、Retina（2x）没测（测试机是 1x 单屏）。
 
+## 本机助手通道（M1，默认关）
+
+源码运行时菜单有「高级 → 允许本机助手控制我（实验）」。默认不勾。勾上才听 `127.0.0.1:6710`（`settings.json` 的 `control_port` 可改）。口令在配置目录 `control_token`，权限 600。打包后的 .app 默认不显示这项，除非 `show_control_menu` 为 true。
+
+```bash
+python3 tools/pet_ctl.py status
+python3 tools/pet_ctl.py say --json-base64 <标准 base64 的 UTF-8 JSON>
+QT_QPA_PLATFORM=offscreen python tests/test_control_m1.py
+```
+
+开关关着时不监听，离线脑（`brain_tick` / 点她）和以前一样。日志只记 `control say ok` 这种类别，不记台词和口令。
+
 ## 权限
 
 - 运行不需要“屏幕录制”或“辅助功能”权限（空闲检测用的 CGEventSource 不要权限；不读别的窗口）。
