@@ -3,6 +3,7 @@
 运行：QT_QPA_PLATFORM=offscreen python tests/test_v036.py
 覆盖：左边躲边立绘是单独画的（不是右边的镜像）；下边躲边（判定、位置不压任务栏、多屏、鼠标靠近探头、
 离开 2.5 秒缩回、气泡/计时牌位置、关掉「只露半身」就不躲）；上方探头发布版默认关闭（拖到上边不进 peek，素材保留）；表情 biz/pout 换成 wave/huff 且挥手不会一直挥；
+躲边时流汗/zzz/感叹号/气团/爱心跟着露出来的发冠，不留在站姿头顶；
 旧的递包素材不再发布；素材尺寸/遮罩/清单一致；边缘去青边统计；版本号。
 Windows 真机（真实多屏、混合 DPI、任务栏在左/右/上）这里用假屏幕几何模拟，最终还要真机看一眼。"""
 import hashlib, os, sys, json, time, tempfile, unittest
@@ -315,6 +316,74 @@ class T3_PetTopBottom(unittest.TestCase):
             self.assertTrue(vis.contains(pet.badge_rect()), side)
             pet.badge_text = None
             pet.bubble = None; pet.bubble_cache = None
+
+    def test_fx_follows_visible_head(self):
+        """流汗 / 气团 / zzz / 感叹号 / 爱心锚在当前探头图的发冠上。
+
+        下边探头的人在画布底部，站姿锚点还在顶上；外接框中点又比发冠更靠右。
+        没在躲边时坐标必须和改之前一样。害羞比探出再往下缩一截，zzz 要跟着。
+        """
+        pet = self.pet
+        names = ('sweat', 'puff', 'zzz', 'excl')
+        self.assertEqual(pet.fx_peek_shift(), (0, 0))
+        idle = {n: QRect(pet.fx_rect(n)) for n in names}
+        hearts = QRect(pet.hearts_rect())
+        upper_cx = pet.sp.ux + pet.sp.uw / 2.0
+        upper_top = float(pet.sp.uy)
+
+        def crown_shift():
+            cx, top = pet.sp.peek_crown(pet.peek_key()[1], pet.peek)
+            return int(round(cx - upper_cx)), int(round(top - upper_top))
+
+        for side in ('left', 'right', 'top', 'bottom'):
+            for out, pose in ((False, 'shy'), (True, 'tilt')):
+                pet.apply_peek(side, animate=False, out=out)
+                pet.compose()
+                dx, dy = crown_shift()
+                self.assertEqual(pet.fx_peek_shift(), (dx, dy), (side, pose))
+                for n, base in idle.items():
+                    self.assertEqual(pet.fx_rect(n), base.translated(dx, dy), (side, pose, n))
+                self.assertEqual(pet.hearts_rect(), hearts.translated(dx, dy), (side, pose))
+                crown_x, crown_y = pet.sp.peek_crown(pose, side)
+                body = pet.sp.peek_mask(pose, side).boundingRect()
+                sweat = pet.fx_rect('sweat')
+                # 和站姿一样：流汗在发冠右下方，而不是画布顶上的气泡区
+                self.assertEqual(sweat.center().y() - pet.oy - int(round(crown_y)),
+                                 idle['sweat'].center().y() - pet.oy - int(round(upper_top)))
+                if side == 'bottom':
+                    self.assertGreater(crown_y, pet.sp.sh * 0.5, pose)
+                    self.assertGreater(sweat.center().y() - pet.oy, pet.sp.sh * 0.55, pose)
+                    self.assertGreater(pet.fx_rect('zzz').y(), pet.oy + pet.sp.sh * 0.4, pose)
+                if side == 'bottom' and pose == 'tilt':
+                    # 整段身子的外接框中点比发冠靠右一大截；锚在外接框上会把流汗甩出脸
+                    self.assertLess(crown_x, body.center().x() - 15)
+                if side in ('left', 'right'):
+                    self.assertGreater(sweat.center().x(), pet.ox + body.left() - sweat.width(), (side, pose))
+                    self.assertLess(sweat.center().x(), pet.ox + body.right() + sweat.width(), (side, pose))
+
+        pet.apply_peek('bottom', animate=False, out=False)
+        y_shy = pet.fx_rect('zzz').y()
+        pet.apply_peek('bottom', animate=False, out=True)
+        y_tilt = pet.fx_rect('zzz').y()
+        self.assertGreaterEqual(y_shy - y_tilt, 30)
+        self.assertLessEqual(y_shy - y_tilt, 40)
+
+        pet.leave_peek()
+        pet.compose()
+        for n, base in idle.items():
+            self.assertEqual(pet.fx_rect(n), base, n)
+        self.assertEqual(pet.hearts_rect(), hearts)
+        self.assertEqual(pet.fx_peek_shift(), (0, 0))
+
+        pet.set_scale(0.75)
+        pet.apply_peek('bottom', animate=False, out=True)
+        _cx, top = pet.sp.peek_crown('tilt', 'bottom')
+        self.assertGreater(top, pet.sp.sh * 0.5)
+        self.assertLess(top, 200)   # 跟着 0.75 缩小，不是 1x 的 y≈235
+        self.assertGreater(pet.fx_rect('zzz').y(), pet.oy + pet.sp.sh * 0.4)
+        self.assertGreater(pet.fx_rect('sweat').center().y() - pet.oy, pet.sp.sh * 0.55)
+        pet.leave_peek()
+        self.assertEqual(pet.fx_peek_shift(), (0, 0))
 
 
 # 交回 A（251×380 右侧）和 B（502×760 六张，含 shy_right）的文件哈希
