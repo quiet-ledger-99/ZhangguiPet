@@ -22,10 +22,13 @@ OPTION_MAX = 10
 OPTIONS_MAX = 3
 SOURCE_MAX = 24
 
-ACTIONS = frozenset({'status', 'say', 'line', 'expr', 'peek', 'quiet', 'hide', 'show'})
+ACTIONS = frozenset({
+    'status', 'say', 'line', 'expr', 'peek', 'quiet', 'hide', 'show', 'feedback', 'wait',
+})
 EXPRS = frozenset({'smile', 'smug', 'thinking', 'biz', 'pout'})
 PEEK_SIDES = frozenset({'left', 'right', 'nearest', 'off'})
 PRIORITIES = frozenset({'normal', 'important'})
+WAIT_MAX_MS = 25000
 _FIELDS = {
     'status': frozenset(),
     'say': frozenset({'text', 'expr', 'options', 'voice', 'priority', 'source'}),
@@ -35,6 +38,8 @@ _FIELDS = {
     'quiet': frozenset({'minutes'}),
     'hide': frozenset(),
     'show': frozenset(),
+    'feedback': frozenset({'since'}),
+    'wait': frozenset({'since', 'timeoutMs'}),
 }
 _REQUIRED = {
     'say': frozenset({'text'}),
@@ -42,6 +47,8 @@ _REQUIRED = {
     'expr': frozenset({'expr'}),
     'peek': frozenset({'side'}),
     'quiet': frozenset({'minutes'}),
+    'feedback': frozenset({'since'}),
+    'wait': frozenset({'since', 'timeoutMs'}),
 }
 
 
@@ -139,6 +146,13 @@ def _plain(text, lo, hi):
     return all(ord(c) >= 0x20 for c in text)
 
 
+def _int_in(value, lo, hi):
+    """真整数，拒绝 bool。"""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return False
+    return lo <= value <= hi
+
+
 def validate(action, payload):
     """白名单校验。通过返回 (cmd, None)，否则 (None, 'bad args')。
     cmd 只含认识的字段，调用方不要再碰原始 payload。"""
@@ -206,6 +220,19 @@ def validate(action, payload):
         if isinstance(minutes, bool) or not isinstance(minutes, int) or not (1 <= minutes <= 1440):
             return None, 'bad args'
         cmd['minutes'] = minutes
+        return cmd, None
+    if action == 'feedback':
+        if not _int_in(payload.get('since'), 0, 2 ** 31 - 1):
+            return None, 'bad args'
+        cmd['since'] = payload['since']
+        return cmd, None
+    if action == 'wait':
+        if not _int_in(payload.get('since'), 0, 2 ** 31 - 1):
+            return None, 'bad args'
+        if not _int_in(payload.get('timeoutMs'), 0, WAIT_MAX_MS):
+            return None, 'bad args'
+        cmd['since'] = payload['since']
+        cmd['timeoutMs'] = payload['timeoutMs']
         return cmd, None
     return cmd, None
 

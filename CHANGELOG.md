@@ -4,7 +4,8 @@
 
 - 菜单「高级 → 允许本机助手控制我（实验）」。默认关。源码运行看得到；打包后的粉丝版默认不显示这项，要在设置里把 `show_control_menu` 写成 true 才出现。
 - 打开后只听 `127.0.0.1`（默认 **6710**，设置项 `control_port`）。口令在配置目录 `control_token`（权限 600）。关掉会停止监听并清空还没说的队列。
-- 命令：`python3 tools/pet_ctl.py status`，`python3 tools/pet_ctl.py say --json-base64 …`。失败输出 `{"ok":false,...}`，退出码 1。
+- 命令：`python3 tools/pet_ctl.py status`，`python3 tools/pet_ctl.py say --json-base64 …`，以及 `feedback` / `wait`。失败输出 `{"ok":false,...}`，退出码 1。`wait` 超时仍是成功（退出码 0），返回当前游标。
+- `say` 的 `options` 画成气泡按钮。点过的按钮留在内存里，`feedback` / `wait` 用 `since` 只读返回更新的点击，不写回执簿、不做任务卡。日志不记口令、气泡正文和按钮文字。
 - 安静时外部 `normal` 不说（`skipped:quiet`）；`important` 只出气泡不出声。外部 `normal` 不抢计时、戳她和离线脑的话。
 - 测试：`QT_QPA_PLATFORM=offscreen python tests/test_control_m1.py`。
 

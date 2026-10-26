@@ -5,8 +5,9 @@
 依赖：PySide6（Essentials 即可）。运行：python zhanggui_pet.py
 台词在 pet_lines.py；系统相关（设置、全屏检测、空闲时间、自启、语音）在 pet_platform.py；
 “说什么”的接口在 pet_brain.py（v0.4 的可选联网聊天/TTS 从这里接）。
-本机助手通道（pet_control，菜单「高级」，默认关）只听 127.0.0.1；关着时不监听，离线脑路径不变。"""
-import os, sys, json, random, time, datetime, traceback, math
+本机助手通道（pet_control，菜单「高级」，默认关）只听 127.0.0.1；关着时不监听，离线脑路径不变。
+feedback / wait 只读气泡按钮的点击，按 since 游标返回，不写任务卡。"""
+import os, sys, json, random, time, datetime, traceback, math, threading
 
 VERSION = '0.3.10'
 _BUILD_SIG = 0x13320F1D        # 构建签名（资源完整性）
@@ -177,6 +178,9 @@ PRIO_TIMER, PRIO_RETURN, PRIO_STAND, PRIO_WATER, PRIO_SLOT = 0, 1, 2, 3, 4
 PRIO_EXT_IMPORTANT, PRIO_EXT_NORMAL = 0.5, 5
 EXT_HOLD_SECS = 8          # 外部说完之后这么多秒内，喝水/久坐不插嘴
 CONTROL_QUEUE_MAX = 5
+OPTION_BTN_H = 22          # 气泡底下的选择按钮
+OPTION_BUBBLE_SECS = 36    # 带按钮的气泡多留一会儿，盖过 wait 的 25 秒
+FEEDBACK_KEEP = 64         # 内存里最多留这么多个按钮点击
 PENDING_MAX_SECS = 90     # 被挤掉的一次性事件最多等这么久，过了就不补了
 # 安静多久由菜单决定，不写死一小时。自定义分钟数必须落在这个闭区间里。
 QUIET_PRESETS = ((15, '15 分钟'), (30, '30 分钟'), (60, '1 小时'))
@@ -714,6 +718,7 @@ class Pet(QWidget):
         self.settle_t0 = None; self.fast_pending = False
         self.last_img = None; self.cur_img = None
         self.bubble = None                  # (text, until)
+        self.bubble_options = None          # 当前气泡上的按钮文字；没有就是 None
         self.fx_on = []                     # [(kind, t0, t1)]
         self.hearts = []                    # [(t0, x)] 摸头时冒的小爱心
         self.last_touch = time.time()
@@ -782,6 +787,9 @@ class Pet(QWidget):
         self.control_seq = 0
         self.ext_hold_until = 0.0
         self._control_bridge = None
+        self.control_clicks = []            # {id, option, index, at}，id 从 1 递增
+        self.control_cursor = 0             # 最新一次点击的 id；还没人点过是 0
+        self.control_feed_cv = threading.Condition()
         self.greeted = set()
         slot = PL.current_slot()
         if slot:
@@ -1233,6 +1241,8 @@ class Pet(QWidget):
                     self.go_idle()
         if self.bubble and now > self.bubble[1]:
             self.bubble = None
+            self.bubble_options = None
+            self.bubble_cache = None
         self.fx_on = [f for f in self.fx_on if f[2] > now]
         if self.patting and (not self.hearts or now - self.hearts[-1][0] > 0.45):
             self.hearts.append((now, random.uniform(0.32, 0.68)))
@@ -1392,7 +1402,8 @@ class Pet(QWidget):
             p.setRenderHint(QPainter.SmoothPixmapTransform, hint)
 
     def bubble_rect(self):
-        k = (self.bubble[0], self.x(), self.y(), self.W, self.font.pixelSize(), self.peek, self.sp.sw)
+        opts = self.bubble_options or ()
+        k = (self.bubble[0], opts, self.x(), self.y(), self.W, self.font.pixelSize(), self.peek, self.sp.sw)
         if self.bubble_cache and self.bubble_cache[0] == k:
             return QRect(self.bubble_cache[1])
         r = self._bubble_rect()
@@ -1409,7 +1420,17 @@ class Pet(QWidget):
             vis = self.rect()
         maxw = max(130, min(self.W - 16, 320, vis.width() - 8))
         br = fm.boundingRect(QRect(0, 0, maxw - 28, 200), Qt.TextWordWrap | Qt.AlignCenter, text)
-        w = min(maxw, br.width() + 32); h = br.height() + 22
+        w = min(maxw, br.width() + 32)
+        extra = 0
+        opts = self.bubble_options
+        if opts:
+            extra = OPTION_BTN_H + 10
+            fm_btn = QFontMetrics(self.small)
+            gap = 6
+            widths = [max(36, fm_btn.horizontalAdvance(s) + 16) for s in opts]
+            opt_w = sum(widths) + gap * (len(opts) - 1) + 20
+            w = min(maxw, max(w, opt_w))
+        h = br.height() + 22 + extra
         x = (self.W - w) // 2; y = BUBBLE_H - h - 4
         if self.peek and self.peek_art_ok():
             if self.peek in PEEK_TB:                        # 上/下边：气泡在她和屏幕中间那一侧，横向对着她
@@ -1425,6 +1446,37 @@ class Pet(QWidget):
 
     def bubble_tail_up(self):
         return self.peek == 'top' and self.peek_art_ok()
+
+    def bubble_option_rects(self):
+        """当前气泡按钮的矩形（窗口坐标）。没有按钮时是空列表。"""
+        opts = self.bubble_options
+        if not opts or not self.bubble:
+            return []
+        r = self.bubble_rect()
+        n = len(opts)
+        gap = 6
+        margin = 10
+        avail = r.width() - margin * 2
+        bw = (avail - gap * (n - 1)) // n
+        if bw < 12:
+            return []
+        y = r.bottom() - 8 - OPTION_BTN_H
+        x = r.left() + margin
+        out = []
+        for _i in range(n):
+            out.append(QRect(int(x), int(y), int(bw), OPTION_BTN_H))
+            x += bw + gap
+        return out
+
+    def bubble_option_at(self, pos):
+        if not self.bubble or not self.bubble_options:
+            return None
+        if not isinstance(pos, QPoint):
+            pos = pos.toPoint()
+        for i, rect in enumerate(self.bubble_option_rects()):
+            if rect.contains(pos):
+                return i
+        return None
 
     def fx_rect(self, name):
         if name == 'zzz':
@@ -1538,7 +1590,21 @@ class Pet(QWidget):
             p.drawPath(path)
             p.setFont(self.font)
             p.setPen(QColor(40, 46, 92))
-            p.drawText(r.adjusted(14, 8, -14, -8), Qt.TextWordWrap | Qt.AlignCenter, self.bubble[0])
+            text_box = r.adjusted(14, 8, -14, -8)
+            opt_rects = self.bubble_option_rects() if self.bubble_options else []
+            if opt_rects:
+                text_box.setBottom(opt_rects[0].top() - 4)
+            p.drawText(text_box, Qt.TextWordWrap | Qt.AlignCenter, self.bubble[0])
+            if opt_rects:
+                fm = QFontMetrics(self.small)
+                p.setFont(self.small)
+                for rect, label in zip(opt_rects, self.bubble_options):
+                    p.setPen(QPen(QColor(40, 58, 130), 1.5))
+                    p.setBrush(QColor(226, 234, 255, 250))
+                    p.drawRoundedRect(QRectF(rect), 8, 8)
+                    p.setPen(QColor(40, 46, 92))
+                    shown = fm.elidedText(label, Qt.ElideRight, max(1, rect.width() - 10))
+                    p.drawText(QRectF(rect), Qt.AlignCenter, shown)
         p.end()
 
     def paint_zzz(self, p, r, u):
@@ -1584,9 +1650,19 @@ class Pet(QWidget):
         """冷却中的台词一句都不选；全在冷却就返回 None（v0.3.5：冷却判断挪进 LocalBrain.pick）。"""
         return self.brain.line(cat, strict=True)
 
-    def show_bubble(self, text):
-        self.bubble = (text, time.time() + max(3.2, 1.2 + len(text) * 0.17))
+    def show_bubble(self, text, options=None):
+        secs = max(3.2, 1.2 + len(text) * 0.17)
+        if options:
+            secs = max(secs, OPTION_BUBBLE_SECS)
+            self.bubble_options = tuple(options)
+        else:
+            self.bubble_options = None
+        self.bubble = (text, time.time() + secs)
+        self.bubble_cache = None
         self.mask_key = None
+        self.last_chrome = None
+        if self.bubble_options and self.isVisible():
+            self.compose()
 
     def wake(self):
         if self.dozing:
@@ -1604,12 +1680,17 @@ class Pet(QWidget):
         self.slide.stop()
         lp = e.position().toPoint() - QPoint(self.ox, self.oy)
         ux, uy, uw, uh = self.sp.ux, self.sp.uy, self.sp.uw, self.sp.uh
+        if self.bubble_option_at(e.position()) is not None:
+            self.zone = 'option'
+            return
         self.zone = 'head' if (lp.y() < uy + uh * 0.30 and ux + uw * 0.15 < lp.x() < ux + uw * 0.85) else 'body'
         if self.zone == 'head':
             self.press_timer.start(LONGPRESS_MS)
 
     def mouseMoveEvent(self, e):
         if self.press_pos is None:
+            return
+        if self.zone == 'option':
             return
         if not (e.buttons() & Qt.LeftButton):        # 按着的时候左键没了：松手消息丢了，当作取消
             was_drag = self.dragging
@@ -1642,6 +1723,14 @@ class Pet(QWidget):
         if e.button() != Qt.LeftButton or self.press_pos is None:   # 没有对应的按下（已经被取消了）：不当成点击
             return
         self.press_timer.stop()
+        if self.zone == 'option':
+            hit = self.bubble_option_at(e.position())
+            self.press_pos = None
+            self.dragging = False
+            self.last_move = None
+            if hit is not None:
+                self._control_note_click(hit)
+            return
         if self.dragging:
             self.on_drop()
         elif self.patting:
@@ -2306,15 +2395,32 @@ class Pet(QWidget):
     def _control_stop(self):
         self.control_q = []
         self.control_deferred = None
+        self.bubble_options = None
+        self.bubble_cache = None
+        self.mask_key = None
         srv = self.control
         self.control = None
         if srv is not None:
             srv.accepting = False
+        with self.control_feed_cv:
+            self.control_clicks.clear()
+            self.control_cursor = 0
+            self.control_feed_cv.notify_all()
+        if srv is not None:
             srv.stop(pump=QApplication.processEvents)
             self.control_log_line('control listen stopped')
 
     def _control_dispatch(self, cmd):
         import queue as _queue
+        action = cmd.get('action') if isinstance(cmd, dict) else None
+        # wait 在网络线程上等点击，不能占着主线程。等到了再回主线程取快照、记日志。
+        if action == 'wait':
+            if not self._control_open():
+                return {'ok': False, 'error': '控制未开启', 'action': 'wait'}
+            ms = cmd.get('timeoutMs', 0)
+            self._control_wait_for_click(cmd.get('since', 0), (ms or 0) / 1000.0)
+            if not self._control_open():
+                return {'ok': False, 'error': '控制未开启', 'action': 'wait'}
         if self._control_bridge is None:
             return self._control_handle(cmd)
         box = _queue.Queue(1)
@@ -2322,15 +2428,22 @@ class Pet(QWidget):
         try:
             return box.get(timeout=4)
         except _queue.Empty:
-            return {'ok': False, 'error': '控制未开启', 'action': cmd.get('action') if isinstance(cmd, dict) else None}
+            return {'ok': False, 'error': '控制未开启', 'action': action}
 
     def _control_handle(self, cmd):
         action = cmd.get('action') if isinstance(cmd, dict) else None
-        if not self.st.get('control_enabled') or self.control is None or not self.control.accepting:
+        if not self._control_open():
             return {'ok': False, 'error': '控制未开启', 'action': action}
         if action == 'status':
             self.control_log_line('control status ok')
             return {'ok': True, 'action': 'status', 'result': self._control_status()}
+        if action == 'feedback':
+            self.control_log_line('control feedback ok')
+            return {'ok': True, 'action': 'feedback', 'result': self._control_feedback_snapshot(cmd.get('since', 0))}
+        if action == 'wait':
+            # 等待已经在网络线程做完。这里只读当前游标，超时也走这条。
+            self.control_log_line('control wait ok')
+            return {'ok': True, 'action': 'wait', 'result': self._control_feedback_snapshot(cmd.get('since', 0))}
         if action == 'quiet':
             return self._control_quiet(cmd.get('minutes'))
         if action == 'hide':
@@ -2347,14 +2460,72 @@ class Pet(QWidget):
             return self._control_accept_speech(cmd)
         return {'ok': False, 'error': 'bad args', 'action': action}
 
+    def _control_open(self):
+        srv = self.control
+        return bool(self.st.get('control_enabled') and srv is not None and srv.accepting)
+
     def _control_status(self):
+        with self.control_feed_cv:
+            cursor = self.control_cursor
         return {
             'enabled': True,
             'quiet': bool(self.quiet()),
             'hidden': bool(self.user_hidden or not self.isVisible()),
             'fullscreen': bool(self.fs_hidden),
-            'cursor': 0,
+            'cursor': cursor,
         }
+
+    def _control_feedback_snapshot(self, since):
+        """since 之后的按钮点击。不删除，同一 since 再读一次结果一样。"""
+        if isinstance(since, bool) or not isinstance(since, int) or since < 0:
+            since = 0
+        with self.control_feed_cv:
+            cursor = self.control_cursor
+            clicks = [dict(item) for item in self.control_clicks if item['id'] > since]
+        return {'cursor': cursor, 'clicks': clicks}
+
+    def _control_wait_for_click(self, since, seconds):
+        if isinstance(since, bool) or not isinstance(since, int) or since < 0:
+            since = 0
+        if not seconds or seconds <= 0:
+            return
+        deadline = time.monotonic() + float(seconds)
+        with self.control_feed_cv:
+            while True:
+                if not self._control_open():
+                    return
+                if any(item['id'] > since for item in self.control_clicks):
+                    return
+                remain = deadline - time.monotonic()
+                if remain <= 0:
+                    return
+                self.control_feed_cv.wait(timeout=remain if remain < 0.25 else 0.25)
+
+    def _control_note_click(self, index):
+        """记下气泡按钮。日志只写类别，不写按钮上的字。"""
+        opts = self.bubble_options
+        if not opts or isinstance(index, bool) or not isinstance(index, int):
+            return False
+        if not (0 <= index < len(opts)):
+            return False
+        label = opts[index]
+        at = int(time.time() * 1000)
+        with self.control_feed_cv:
+            if not self._control_open():
+                return False
+            self.control_cursor += 1
+            self.control_clicks.append({
+                'id': self.control_cursor,
+                'option': label,
+                'index': index,
+                'at': at,
+            })
+            extra = len(self.control_clicks) - FEEDBACK_KEEP
+            if extra > 0:
+                del self.control_clicks[:extra]
+            self.control_feed_cv.notify_all()
+        self.control_log_line('control feedback noted')
+        return True
 
     def _control_busy(self):
         return bool(self.dragging or self.patting or self.press_pos is not None)
@@ -2452,9 +2623,7 @@ class Pet(QWidget):
             text, expr = cmd.get('text') or '', cmd.get('expr')
         if cmd.get('source'):
             text = text + '\n· ' + cmd['source']
-        if cmd.get('options'):
-            text = text + '\n' + '｜'.join(cmd['options'])
-        self.show_bubble(text)
+        self.show_bubble(text, cmd.get('options'))
         if expr:
             self.wake()
             self.play_expr(expr)

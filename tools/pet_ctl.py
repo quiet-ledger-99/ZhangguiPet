@@ -9,9 +9,13 @@
 例子：
   python3 tools/pet_ctl.py status
   python3 tools/pet_ctl.py say --json-base64 BASE64
+  python3 tools/pet_ctl.py feedback --json-base64 BASE64
+  python3 tools/pet_ctl.py wait --json-base64 BASE64
 
 BASE64 是 UTF-8 JSON 的标准 base64（要有 padding）。say 的 JSON 例如：
   {"text":"今天也辛苦啦。","expr":"smile","priority":"normal"}
+feedback 只读气泡按钮：{"since":0}
+wait 最多等 25 秒，有新点击立刻返回，超时也返回当前游标：{"since":0,"timeoutMs":25000}
 多一个不认识的字段，桌宠会拒绝。
 """
 import os, sys, json, socket
@@ -33,8 +37,13 @@ USAGE = """用法：
   python3 tools/pet_ctl.py quiet --json-base64 BASE64
   python3 tools/pet_ctl.py hide
   python3 tools/pet_ctl.py show
+  python3 tools/pet_ctl.py feedback --json-base64 BASE64
+  python3 tools/pet_ctl.py wait --json-base64 BASE64
 
 只连接 127.0.0.1。口令自动从配置目录的 control_token 读取。
+feedback / wait 的 JSON 只有 since（以及 wait 的 timeoutMs，0–25000）。
+返回 result.cursor 和 result.clicks（id、option、index、at）。
+since 用上次的 cursor，旧点击不会再出现。wait 超时也算成功，退出码 0。
 """
 
 
@@ -53,6 +62,17 @@ def _port_open(port):
         return False
     finally:
         s.close()
+
+
+def _rpc_timeout(action, payload):
+    """wait 要盖住 timeoutMs，再留几秒给来回。别的动作几秒够了。"""
+    if action != 'wait' or not isinstance(payload, dict):
+        return 5.0
+    raw = payload.get('timeoutMs', 0)
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        raw = 0
+    raw = max(0, min(C.WAIT_MAX_MS, raw))
+    return raw / 1000.0 + 3.0
 
 
 def main(argv=None):
@@ -78,7 +98,7 @@ def main(argv=None):
     token = C.read_token(conf)
     if not token:
         return emit({'ok': False, 'error': '找不到口令', 'action': action}, 1)
-    result = C.call(port, token, action, payload)
+    result = C.call(port, token, action, payload, timeout=_rpc_timeout(action, payload))
     return emit(result, 0 if result.get('ok') else 1)
 
 
