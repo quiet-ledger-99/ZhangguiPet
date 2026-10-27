@@ -263,6 +263,43 @@ class PetModes(unittest.TestCase):
         self.assertEqual(pet.bubble_rect().y(), bubble_y)
         self.assertEqual((pet.sp.ux, pet.sp.uy, pet.sp.uw, pet.sp.uh), (dx, 0, 188, 285))
 
+    def test_10_peek_fx_follows_head_with_legs(self):
+        """长脚画布更宽：左/右探头的人贴在墙边，站姿流汗还在上半身中间，会悬在空处。"""
+        pet = self.pet(); pet.set_legs(True)
+        names = ('sweat', 'puff', 'zzz', 'excl')
+        idle = {n: QRect(pet.fx_rect(n)) for n in names}
+        hearts = QRect(pet.hearts_rect())
+        upper_cx = pet.sp.ux + pet.sp.uw / 2.0
+        self.assertEqual(pet.fx_peek_shift(), (0, 0))
+        for side in ('left', 'right', 'bottom', 'top'):
+            pet.apply_peek(side, animate=False, out=True)
+            pet.compose()
+            cx, top = pet.sp.peek_crown('tilt', side)
+            dx = int(round(cx - upper_cx))
+            dy = int(round(top - pet.sp.uy))
+            self.assertEqual(pet.fx_peek_shift(), (dx, dy), side)
+            for n, base in idle.items():
+                self.assertEqual(pet.fx_rect(n), base.translated(dx, dy), (side, n))
+            self.assertEqual(pet.hearts_rect(), hearts.translated(dx, dy), side)
+            local_sweat_x = pet.fx_rect('sweat').center().x() - pet.ox
+            local_sweat_y = pet.fx_rect('sweat').center().y() - pet.oy
+            if side == 'left':
+                self.assertLess(local_sweat_x, pet.sp.sw * 0.45)
+            elif side == 'right':
+                self.assertGreater(local_sweat_x, pet.sp.sw * 0.7)
+            elif side == 'bottom':
+                self.assertGreater(top, pet.sp.sh * 0.5)
+                self.assertGreater(local_sweat_y, pet.sp.sh * 0.6)
+                self.assertGreater(pet.fx_rect('zzz').y(), pet.oy + pet.sp.sh * 0.45)
+        pet.apply_peek('bottom', animate=False, out=False)
+        y_shy = pet.fx_rect('zzz').y()
+        pet.set_peek_pose(True)
+        self.assertLess(pet.fx_rect('zzz').y(), y_shy)
+        pet.leave_peek()
+        for n, base in idle.items():
+            self.assertEqual(pet.fx_rect(n), base, n)
+        self.assertEqual(pet.hearts_rect(), hearts)
+
     def test_09_version(self):
         self.assertEqual(Z.VERSION, '0.3.10')
         for path in ('README.md', 'CHANGELOG.md', '说明.txt', 'packaging/version_info.txt'):

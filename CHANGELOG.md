@@ -18,6 +18,11 @@
 - 安静时外部 `normal` 不说（`skipped:quiet`）；`important` 只出气泡不出声。外部 `normal` 不抢计时、戳她和离线脑的话。
 - 测试：`QT_QPA_PLATFORM=offscreen python tests/test_control_m1.py`。
 
+## 未发布 · 底边探头表情位置
+
+- 藏到屏幕边上时，流汗、气团、zzz、感叹号和摸头爱心改锚在当前探头图露出来的发冠上。下边探头的人在画布底部，以前这些特效还按站姿上半身的头顶画，会浮在窗口上方、离头很远。左/右探头（长脚画布更明显）也不再悬在身子旁边的空处。没在躲边时位置不变。气泡和计时牌原来的贴边算法没改。
+- 测试：`tests/test_v036.py` 的 `test_fx_follows_visible_head`，`tests/test_v037.py` 的 `test_10_peek_fx_follows_head_with_legs`。
+
 ## v0.3.10（2026-10-25）
 
 ### 右探头白缝与探头 @2x

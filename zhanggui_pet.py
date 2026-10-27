@@ -368,6 +368,7 @@ class Sprites:
         self.budget = idle_b + max(20 * 2**20 * k, 26 * k * fb)    # 待机全常驻 + 至少 26 帧（24fps 时 52 帧）给其他片段，停留循环不会反复解码
         self.masks = {}
         self.peek_cache = {}
+        self.peek_head = {}
         self.fx = {k: (im.scaled(max(1, round(im.width() * s)), max(1, round(im.height() * s)),
                                  Qt.KeepAspectRatio, Qt.SmoothTransformation), (at[0] * s, at[1] * s))
                    for k, (im, at) in self.fx_src.items()}
@@ -415,6 +416,7 @@ class Sprites:
         if abs(old - dpr) < 0.01:
             return False
         self.peek_cache.clear()
+        getattr(self, 'peek_head', {}).clear()
         for k in list(getattr(self, 'masks', {})):
             if isinstance(k, tuple) and k and k[0] == 'peek':
                 del self.masks[k]
@@ -501,6 +503,78 @@ class Sprites:
                 r = QRegion(QBitmap.fromImage(im.createAlphaMask()))
             self.masks[key] = r
         return r
+
+    def peek_crown(self, pose, side):
+        """逻辑像素下，这张探头图露出来的头顶：(发冠水平中点, 最上沿)。
+
+        遮罩外接框的水平中点是整段身子的。下边探头时身子比头发更靠右，用外接框会把流汗甩到脸外面。
+        发冠取最上沿往下一段（约 36×当前比例，且不超过身子高度的 1/3）里 alpha>20 的像素的水平范围中点。
+        读不到图时退回站姿上半身的顶边中点。
+        """
+        key = (pose, side, self.sw, self.sh, round(self.peek_dpr() * 100))
+        cache = getattr(self, 'peek_head', None)
+        if cache is None:
+            cache = self.peek_head = {}
+        hit = cache.get(key)
+        if hit is not None:
+            return hit
+        fallback = (self.ux + self.uw / 2.0, float(self.uy))
+        im = self.peek_img(pose, side)
+        if im is None or im.isNull():
+            cache[key] = fallback
+            return fallback
+        if im.width() != self.sw or im.height() != self.sh:
+            im = im.scaled(self.sw, self.sh, Qt.IgnoreAspectRatio, Qt.FastTransformation)
+        im = im.convertToFormat(QImage.Format_ARGB32)
+        w, h = im.width(), im.height()
+        bpl = im.bytesPerLine()
+        mv = memoryview(im.constBits())
+        thresh = 20
+
+        def row_span(y):
+            row = y * bpl
+            left = None
+            for x in range(w):
+                if mv[row + x * 4 + 3] > thresh:
+                    left = x
+                    break
+            if left is None:
+                return None
+            right = left
+            for x in range(w - 1, left - 1, -1):
+                if mv[row + x * 4 + 3] > thresh:
+                    right = x
+                    break
+            return left, right
+
+        top = None
+        for y in range(h):
+            if row_span(y) is not None:
+                top = y
+                break
+        if top is None:
+            cache[key] = fallback
+            return fallback
+        bottom = top
+        for y in range(h - 1, top - 1, -1):
+            if row_span(y) is not None:
+                bottom = y
+                break
+        body_h = bottom - top + 1
+        band = max(8, min(round(36 * self.s), max(8, body_h // 3)))
+        left, right = w, -1
+        for y in range(top, min(h, top + band)):
+            span = row_span(y)
+            if span is None:
+                continue
+            left = min(left, span[0])
+            right = max(right, span[1])
+        if right < left:
+            cache[key] = fallback
+            return fallback
+        hit = ((left + right) / 2.0, float(top))
+        cache[key] = hit
+        return hit
 
     def mask(self, name):
         """该动画所有帧 alpha 的并集（make_assets.py 预先生成），缩放后当窗口遮罩：每段动画只 setMask 一次。"""
@@ -1661,19 +1735,38 @@ class Pet(QWidget):
                 return i
         return None
 
+    def fx_peek_shift(self):
+        """躲边时表情特效相对站姿要平移的 (dx, dy)，单位是逻辑像素。
+
+        流汗、气团、zzz、感叹号、爱心都锚在上半身框的头顶附近。探头立绘把人画在贴墙的那一边：
+        下边探头时头在画布底部，锚点还停在画布顶上，特效就会悬在离她很远的空处。
+        平移量 = 当前这张图（害羞或探出）的发冠 − 上半身顶边中点。没在躲边、或探头图没就绪时是 (0, 0)。
+        """
+        if not self.peek or not self.peek_art_ok():
+            return 0, 0
+        cx, top = self.sp.peek_crown(self.peek_key()[1], self.peek)
+        dx = int(round(cx - (self.sp.ux + self.sp.uw / 2.0)))
+        dy = int(round(top - self.sp.uy))
+        return dx, dy
+
     def fx_rect(self, name):
+        dx, dy = self.fx_peek_shift()
         if name == 'zzz':
             s = self.sp.s
-            return QRect(int(self.ox + self.sp.ux + self.sp.uw * 0.66), int(self.oy + self.sp.uy - 10 * s), int(70 * s) + 20, int(80 * s) + 20)
-        if name == 'excl':
+            r = QRect(int(self.ox + self.sp.ux + self.sp.uw * 0.66), int(self.oy + self.sp.uy - 10 * s), int(70 * s) + 20, int(80 * s) + 20)
+        elif name == 'excl':
             s = self.sp.s
-            return QRect(int(self.ox + self.sp.ux + self.sp.uw * 0.74), int(self.oy + self.sp.uy + 4 * s), int(30 * s) + 12, int(44 * s) + 12)
-        img, (ax, ay) = self.sp.fx[name]
-        return QRect(int(self.ox + ax - img.width() / 2), int(self.oy + ay - img.height() / 2), img.width(), img.height())
+            r = QRect(int(self.ox + self.sp.ux + self.sp.uw * 0.74), int(self.oy + self.sp.uy + 4 * s), int(30 * s) + 12, int(44 * s) + 12)
+        else:
+            img, (ax, ay) = self.sp.fx[name]
+            r = QRect(int(self.ox + ax - img.width() / 2), int(self.oy + ay - img.height() / 2), img.width(), img.height())
+        return r.translated(dx, dy)
 
     def hearts_rect(self):
         uw, uh = self.sp.uw, self.sp.uh
-        return QRect(int(self.ox + self.sp.ux + uw * 0.2), int(self.oy + self.sp.uy - 30 * self.sp.s - 12), int(uw * 0.6), int(uh * 0.22 + 40 * self.sp.s + 12))
+        r = QRect(int(self.ox + self.sp.ux + uw * 0.2), int(self.oy + self.sp.uy - 30 * self.sp.s - 12), int(uw * 0.6), int(uh * 0.22 + 40 * self.sp.s + 12))
+        dx, dy = self.fx_peek_shift()
+        return r.translated(dx, dy)
 
     def badge_rect(self):
         fm = QFontMetrics(self.small)
@@ -1739,11 +1832,12 @@ class Pet(QWidget):
                     r.translate(0, int(min(1.0, u / 1.6) * 10 * self.sp.s))
                 p.drawImage(r, self.sp.fx[name][0])
         p.setOpacity(1.0)
+        hdx, hdy = self.fx_peek_shift()
         for t0, hx in self.hearts:
             u = (now - t0) / 1.3
             p.setOpacity(max(0.0, min(1.0, (1 - u) * 1.6)))
-            x = self.ox + self.sp.ux + self.sp.uw * hx
-            y = self.oy + self.sp.uy + self.sp.uh * 0.12 - u * 40 * self.sp.s
+            x = self.ox + self.sp.ux + self.sp.uw * hx + hdx
+            y = self.oy + self.sp.uy + self.sp.uh * 0.12 - u * 40 * self.sp.s + hdy
             paint_heart(p, x, y, 12 + 6 * self.sp.s)
         p.setOpacity(1.0)
         if self.angle:
