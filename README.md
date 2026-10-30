@@ -1,8 +1,11 @@
-# 掌柜台桌宠 v0.3.9
+# 掌柜台桌宠 v0.3.11
 
 > **千问娘形象二创**的桌面小伙伴（角色名：文昭）。**非官方粉丝二创，与阿里巴巴及通义千问无隶属或合作关系。**
 > 免费、无广告、不盈利 · 含 AI 生成内容 · 代码大部分由 AI 编写。
 > **完全离线**：不联网、不要任何 key、不监听键盘、不收集数据；拖给她的文件只看扩展名，**绝不打开、移动、删除**。
+
+## 解压后怎么打开
+解压后不用安装。Windows：双击文件夹里的 `ZhangguiPet.exe`。macOS：打开 `ZhangguiPet.app`（第一次若被系统拦住，在访达里对它按右键，选「打开」）。如果解压后只有 `zhanggui_pet.py`、没有 exe，那是源码包，按下面「在 Windows 上运行」用 Python 打开。
 
 ## 署名与授权
 - **美术**：千问娘原作形象 © [@ZipZipPipe](https://space.bilibili.com/4168597)（B站 UID 4168597）。本程序里的立绘、表情、动作帧和躲边立绘，是基于原作形象（借助 AI 工具）制作的二创。
@@ -34,22 +37,23 @@
 - 节日和季节台词：元旦、春节、除夕、元宵、情人节、劳动节、儿童节、端午、七夕、教师节、中秋、国庆、1024 程序员节、万圣节、圣诞、跨年，周五晚上和周末也有。农历节日已查好 2026～2030 年的日期。
 - 离开 5 分钟以上再回来，她会说「回来啦～」（离开超过半小时、隔夜回来的说法不一样）。这里只读系统的“最后一次操作时间”（Windows 的 GetLastInputInfo），不装键盘钩子。
 - 每句台词都有冷却时间和权重，最近说过的尽量不重复。
+- v0.3.11 四个新动作（Windows / macOS 一样）：**伸懒腰**（早上第一次、连续用电脑约 90 分钟）、**打哈欠**（23 点后到凌晨 5 点，约 40 分钟一次）、**点头**（应答时）、**打盹**（约 10 分钟没人动电脑就站着眯一会儿，点一下醒来伸个懒腰）。刚启动 5 分钟内不会主动做。右键菜单「动作试播」可以手动看。安静时段、全屏、藏起来时都不触发。
 - 待机小动作：隔一阵子自己笑一下、想事情、眯眼，频率可调（关 / 偶尔 / 适中 / 经常），偶尔小声嘀咕一句（只有气泡，不出声）。
 - 计时器：番茄钟（专注、休息时长可调）和正计时；关掉小窗也继续计时，时间显示在她脚边。番茄结束会夸你，正计时每半小时鼓励一句，满 2 小时温柔地叫你起来动一动。
 - 喝水提醒、久坐提醒：**默认关**，在菜单里打开，间隔可选。
 
 **不打扰**
 - 有全屏程序（游戏、全屏视频、F11 浏览器）在她那块屏幕上时，自动躲起来，退出全屏再回来；躲起来时动画完全停掉，开着的计时器小窗和关于页也一起藏，不出声、不弹通知；期间到点的计时提醒，退出全屏后补说一次。
-- 安静一小时：不主动说话、不出声，点她还会回应。
+- 安静一段时间：不主动说话、不出声，点她还会回应。时长可以选 15 分钟、30 分钟、1 小时，也可以自己填分钟数（1 分钟到 24 小时）。
 - 你离开电脑时，动画降到每秒 4 帧省电。
 
 ## 托盘和右键菜单（两处一样）
 单击托盘图标：显示 / 藏起来。右键托盘图标或右键她：
 - 显示她 / 先藏起来、总在最前
+- 安静一段时间（在第一屏靠前）：15 分钟、30 分钟、1 小时，或「自定义…」填分钟数（1–1440）。安静中最上面这一项是「结束安静（还剩 N 分钟）」，点一下提前结束；再选一个时长会按新的时长重新算
 - 飘着 / 长脚：两项互斥切换，默认飘着。长脚默认 75%，两种模式分别记住大小；切换时保持脚底位置，必要时拉回屏幕内。v0.3.8 起长脚模式 8 段动作（待机、笑、得意、思考、两个保持动作、挥手、合扇叉腰）都是统一画风的整身重画，全部有腿。计时牌在上半身底部，上方探头继续关闭。
 - 大小：滑块 20%～150%，另有 50/75/100/125/150% 快捷档；调完停手约 1 秒，她会问一句「这个大小可以吗？」（安静模式、藏起来、全屏时不问，20 秒内不重复；开机恢复大小不问）
-- 安静一小时（再点一次提前结束）
-- 声音：静音、音量四档（默认小声 35%）
+- 声音：能看到装没装语音包；静音、音量四档（默认 35%）
 - 提醒和小动作：离开回来打招呼（默认开）、按时段问候（默认开）、喝水 / 久坐提醒（默认关）和间隔、待机小动作频率、全屏时躲起来、贴边只露半身
 - 计时器（番茄钟 / 正计时）…
 - 找回她（回到主屏幕中间，跑丢了就点这个）
@@ -68,12 +72,23 @@
 - `zhanggui-pet.log` 是事件日志（最多 256KB，自动轮换）。
 - 完全卸载：删掉程序文件夹，再删掉上面这个配置文件夹；开过“开机自动启动”的话先在菜单里取消。
 
-## 语音（预录）
-- 播放已经做好：台词 id 对应 `assets/voice/<台词id>.wav`，有文件就放，没有就只显示气泡。默认开启、音量小声，菜单里可以静音。播放不依赖 QtMultimedia：Windows 用系统自带的 winsound，Linux 用 paplay、aplay 或 ffplay。
-- **现在还没有语音包。** Day 0 的声音是阿里云百炼的云端 TTS 音色 `longxing_v3.1`（合成参数见 `voice_plan_pet.json`），要用你电脑上的 key 合成，这台测试机没法离线复现，也不想拿别的声音凑数。
-- 生成办法：`voice_plan_pet.json` 已经导出好了（128 句，约 1545 字，格式和 Day 0 的配音计划一样，带情绪标签和语气说明）。在你电脑上用 Day 0 那套合成脚本跑一遍，再执行 `python tools/import_voice.py <合成结果文件夹>`，会转成 24kHz 单声道 wav，裁掉首尾静音，统一响度，放进 `assets/voice/`。改了台词就重新跑 `python tools/export_voice_plan.py`。
+## 语音（可选离线语音包）
+主程序压缩包**不含**全量语音，运行也不要 API key。没有语音文件时，她照旧只冒文字气泡，不报错、不联网。
 
-## 给 v0.4 留的接口（可选联网聊天 / TTS，默认关）
+- 文件名和台词 id 对齐：`assets/voice/<台词id>.wav`（优先）或 `.ogg`，id 见 `voice_plan_pet.json`。有这个文件就放，没有就只显示气泡。
+- 菜单「声音」里能看出状态：没装是「还没装语音包，现在只有文字气泡」；装了是「语音包：已装 N 句」。还可以静音、调音量（默认 35%）。
+- 播放不依赖 QtMultimedia，主路径也不调用在线 TTS：Windows 用系统自带的 winsound（wav），macOS 探测系统 `afplay`，Linux 用 paplay、aplay 或 ffplay。macOS 上 `.ogg` 交给 `afplay`；Windows 的 winsound 只播 wav。
+- **另下语音包（可选）**：主 zip / app **不要**把 128 句打进去。语音包发布后，把 `<台词id>.wav`（或 `.ogg`）放进程序里已经有的 `assets/voice/`（和精灵图同一层，里面有一份说明）。源码或源码包就是仓库里的 `assets/voice/`。Windows 安装包在 `ZhangguiPet.exe` 旁边的 `_internal\assets\voice\`。macOS 安装包在 `ZhangguiPet.app/Contents/Frameworks/assets/voice/`（`Contents/Resources/assets/voice/` 是同一目录）。放好后重新打开菜单就能看到句数。详见 `assets/voice/README.md`。
+- 自己准备音频（仍然不在主程序里联网）：`voice_plan_pet.json` 是配音计划（128 句，约 1545 字，带情绪标签）。在你自己的电脑上合成后，执行 `python tools/import_voice.py <合成结果文件夹>`，会转成 24kHz 单声道 wav，裁掉首尾静音，统一响度，放进 `assets/voice/`。改了台词就重新跑 `python tools/export_voice_plan.py`。这些 wav 留在本机，不必提交进主仓库。
+
+## 可选：联网人格 + TTS（`pet_online.py`，默认关）
+v0.3.11 起代码里带了 `pet_online.py`，**只有设置环境变量 `ZHANGGUI_PET_ONLINE=1` 才加载**；不设就和以前一样完全离线，四个新动作也是纯本地素材，不依赖它。
+- 台词：问本机 `http://127.0.0.1:6790/line`（人格服务要自己在本机跑，0.35 秒没回就用内置台词）。打开后双击她或右键「和她说话…（打字）」可以打字聊天。
+- 发声：自备的 TTS 脚本（`ZHANGGUI_QWEN_PY` / `ZHANGGUI_QWEN_TTS` 指定），找不到就只出气泡。Windows 用 `winsound` 播放，macOS 用 `afplay`。
+- 不写死任何个人路径，不读 key，不装开机自启。服务不在时开关开着也照常跑。
+- 协作说明：这是一次 Grok Bot / DSH / ChatGPT 一起做的尝试。真实的跨助手派活默认关；ChatGPT 没有 DSH 那样的常驻监听。
+
+### 原来给 v0.4 留的接口
 本体只通过 `pet_brain.py` 要台词：`brain.line(类别)` 必须同步返回、不能卡界面；`brain.chat(文字, 上下文, 回调)` 在 v0.3 里固定返回 False。
 v0.4 计划新建 `pet_online.py`，只有在设置里填了 key 并打开开关时才加载：
 - `OnlineBrain` 继承 `LocalBrain`：在后台线程请求用户自己填的聊天 API，15 秒超时，让模型返回 `{"text", "expr"}` 来配表情；出错或超时就退回离线台词。
@@ -118,15 +133,16 @@ spec 里已经写好排除的 Qt 模块、图标和 exe 版本信息（产品名
 | `pet_lines.py` | **台词库**（改台词只改这里；`python pet_lines.py` 会检查 id 重复和禁用词） |
 | `pet_platform.py` | 设置、日志、空闲时间、全屏检测、开机自启、语音播放 |
 | `pet_brain.py` | 选台词（冷却 + 权重）；v0.4 联网模块的接口说明 |
+| `pet_control.py`、`tools/pet_ctl.py` | 本机助手通道（实验，默认关）。见下方说明 |
 | `assets/sprites/` | 透明精灵帧（251×380，12fps，432 帧；`tools/export_sprites.py` 导出） |
-| `assets/peek/` | 躲屏幕边的立绘：左右各两张（害羞 / 探头），上、下各一张探头图（害羞 = 程序里往屏幕外缩回去一截，缩多少见 `peek.json`） |
+| `assets/peek/` | 躲屏幕边的立绘（251×380）：左右各两张（害羞 / 探头），上、下各一张探头图（害羞往屏幕外缩，见 `peek.json`）。`@2x/` 是同一套 502×760，屏幕缩放大于 100% 时用，贴边仍按 251×380 |
 | `assets/masks/` | 每段动画的并集遮罩（`tools/make_assets.py` 生成） |
 | `assets/icon.png / icon.ico` | 托盘和 exe 图标（位图） |
-| `assets/voice/` | 预录语音（目前为空） |
+| `assets/voice/` | 可选离线语音包（主包默认只有说明，不含 128 句；见该目录 README） |
 | `voice_plan_pet.json` | 给 TTS 用的配音计划 |
 | `tools/demo_v03.py`、`tools/env_up.sh`、`tools/fake_desktop.py` | 在虚拟屏上录演示（真实鼠标操作 + 托盘 + 可拖文件的假桌面） |
 | `tools/export_voice_plan.py`、`tools/import_voice.py` | 导出配音计划 / 导入合成好的语音 |
-| `tests/test_v035.py`、`tests/test_v036.py` | 离屏单元测试（`QT_QPA_PLATFORM=offscreen python tests/test_v036.py`；v0.3.6 的素材检查要 numpy、Pillow、opencv，没有就跳过那一项） |
+| `tests/test_v035.py`、`tests/test_v036.py`、`tests/test_voice_pack.py` | 离屏单元测试（`QT_QPA_PLATFORM=offscreen python tests/test_v036.py`；v0.3.6 的素材检查要 numpy、Pillow、opencv，没有就跳过那一项） |
 | `tools/art036/` | v0.3.6 美术工具：去青边和边缘统计（`edgecheck.py`、`stats_v036.py`）、去帽徽旁珍珠（`pearls.py`）、躲边立绘抠图（`cut_peek.py`） |
 | `CHANGELOG.md` | 版本更新记录 |
 | `demo_v03.mp4`、`demo_v03.png` | v0.3 演示视频和拼图 |
@@ -134,6 +150,33 @@ spec 里已经写好排除的 Qt 模块、图标和 exe 版本信息（产品名
 
 ## 调试用环境变量（平时用不到）
 `ZHANGGUI_PET_DEBUG=1` 打印日志；`ZHANGGUI_PET_HOLD=秒` 表情停留时间；`ZHANGGUI_PET_AWAY_SECS=秒` 多久算离开；`ZHANGGUI_PET_ORDER=台词id,…` 固定台词顺序（录视频用）；`ZHANGGUI_PET_AUTOQUIT=秒`；`ZHANGGUI_PET_CONFIG_DIR=路径`；`ZHANGGUI_PET_NOMASK=1`；测试用的 `ZHANGGUI_PET_SIM_FULLSCREEN_FILE`、`ZHANGGUI_PET_SIM_IDLE_FILE`、`ZHANGGUI_PET_CMD_FILE`、`ZHANGGUI_PET_NO_AUDIO`、`ZHANGGUI_PET_NO_OPEN`，只有设置了才生效。`ZHANGGUI_PET_CMD_FILE` 只在源码运行时有效（打包后的 exe 完全不读），而且只认白名单动作（`pat`、`poke`、`scale 0.8`、`line <台词id>`、`timer_remaining 3` 等，见 `zhanggui_pet.py` 的 `DEV_ACTIONS`），不执行任何代码。
+
+## 本机助手控制（实验，默认关）
+
+粉丝下载的版本仍然纯离线。这个开关默认关，打包后的程序里菜单默认不出现。
+
+源码运行时，右键或托盘菜单有「高级 → 允许本机助手控制我（实验）」。勾上之后，她只在 `127.0.0.1` 上听（默认端口 **6710**，可在 `settings.json` 里改 `control_port`）。口令写在配置目录的 `control_token`（权限 600），`pet_ctl` 会自己读，不要贴到聊天里。取消勾选会真的关掉监听，并丢掉还没说的外部台词。
+
+打包版要先在 `settings.json` 里把 `show_control_menu` 设为 `true`，菜单里才会出现「高级」。`control_enabled` 默认 `false`。
+
+```bash
+python3 tools/pet_ctl.py status
+python3 -c 'import json,base64; print(base64.b64encode(json.dumps({"text":"今天也辛苦啦。","expr":"smile"}, ensure_ascii=False).encode()).decode())'
+python3 tools/pet_ctl.py say --json-base64 <上面的输出>
+```
+
+成功是一行 `{"ok": true, ...}`；失败同样是一行 JSON，进程退出码 1。带浏览器 `Origin` 的请求会拒绝，`Host` 也必须是 `127.0.0.1:端口`。
+
+`say` 可以带最多 3 个按钮（`options`，每个不超过 10 个字）。你点了哪个，用 `feedback` / `wait` 读：
+
+```bash
+python3 tools/pet_ctl.py feedback --json-base64 <{"since":0} 的 base64>
+python3 tools/pet_ctl.py wait --json-base64 <{"since":0,"timeoutMs":25000} 的 base64>
+```
+
+`since` 是游标。返回里的 `result.cursor` 是目前最新的点击序号，`result.clicks` 只含序号比 `since` 大的点击（`id`、`option`、`index`、`at`）。这是只读：同一个 `since` 再读一次，结果一样；把 `since` 设成上次的 `cursor`，旧点击不会再出现。`wait` 最多等 `timeoutMs` 毫秒（0–25000），有新点击立刻返回；超时也返回当前游标，退出码 0。日志不记口令，也不记气泡正文和按钮上的字。任务卡不在这一期。
+
+测试（不需要真屏幕）：`QT_QPA_PLATFORM=offscreen python tests/test_control_m1.py`。
 
 ## v0.3.6 更新（详见 `CHANGELOG.md`）
 

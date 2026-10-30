@@ -1,0 +1,1025 @@
+{
+ "voice": "longxing_v3.1",
+ "model": "qwen-audio-3.1-tts-flash",
+ "speech_rate": 1.0,
+ "pitch_rate": 1.05,
+ "volume": 70,
+ "note": "掌柜台桌宠预录语音。合成后得到 <id>.mp3，用 tools/import_voice.py 导入 assets/voice/。",
+ "lines": [
+  {
+   "id": "poke01",
+   "text": "嗯？我在呢。",
+   "tagged_text": "[shy]嗯？我在呢。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "poke"
+  },
+  {
+   "id": "poke02",
+   "text": "今天也辛苦啦。",
+   "tagged_text": "[shy]今天也辛苦啦。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "poke"
+  },
+  {
+   "id": "poke03",
+   "text": "记得喝口水哦。",
+   "tagged_text": "[shy]记得喝口水哦。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "poke"
+  },
+  {
+   "id": "poke04",
+   "text": "眼睛累了吧？看看远处～",
+   "tagged_text": "[curious]眼睛累了吧？看看远处～",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "poke"
+  },
+  {
+   "id": "poke05",
+   "text": "累了就歇一会儿吧。",
+   "tagged_text": "[shy]累了就歇一会儿吧。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "poke"
+  },
+  {
+   "id": "poke06",
+   "text": "别太勉强自己哦。",
+   "tagged_text": "[curious]别太勉强自己哦。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "poke"
+  },
+  {
+   "id": "poke07",
+   "text": "慢慢来，不着急。",
+   "tagged_text": "[shy]慢慢来，不着急。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "poke"
+  },
+  {
+   "id": "poke08",
+   "text": "你已经做得很好了。",
+   "tagged_text": "[shy]你已经做得很好了。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "poke"
+  },
+  {
+   "id": "poke09",
+   "text": "坐好久了，起来走走？",
+   "tagged_text": "[curious]坐好久了，起来走走？",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "poke"
+  },
+  {
+   "id": "poke10",
+   "text": "加油！我陪着你～",
+   "tagged_text": "[excited]加油！我陪着你～",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "poke"
+  },
+  {
+   "id": "poke11",
+   "text": "有什么要我帮忙记下来的吗？",
+   "tagged_text": "[curious]有什么要我帮忙记下来的吗？",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "poke"
+  },
+  {
+   "id": "poke12",
+   "text": "我就在旁边，不吵你～",
+   "tagged_text": "[shy]我就在旁边，不吵你～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "poke"
+  },
+  {
+   "id": "poke13",
+   "text": "肩膀放松一点，深呼吸——",
+   "tagged_text": "[shy]肩膀放松一点，深呼吸——",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "poke"
+  },
+  {
+   "id": "poke14",
+   "text": "今天的账本我都替你看着呢。",
+   "tagged_text": "[shy]今天的账本我都替你看着呢。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "poke"
+  },
+  {
+   "id": "poke15",
+   "text": "嗯嗯，我听着呢。",
+   "tagged_text": "[shy]嗯嗯，我听着呢。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "poke"
+  },
+  {
+   "id": "pat01",
+   "text": "诶……摸头吗？",
+   "tagged_text": "[shy]诶……摸头吗？",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "pat"
+  },
+  {
+   "id": "pat02",
+   "text": "头发会乱的啦……不过没关系。",
+   "tagged_text": "[shy]头发会乱的啦……不过没关系。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "pat"
+  },
+  {
+   "id": "pat03",
+   "text": "嘿嘿，谢谢你～",
+   "tagged_text": "[shy]嘿嘿，谢谢你～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "pat"
+  },
+  {
+   "id": "pat04",
+   "text": "被你这样摸，有点不好意思呢。",
+   "tagged_text": "[shy]被你这样摸，有点不好意思呢。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "pat"
+  },
+  {
+   "id": "pat05",
+   "text": "帽子要掉啦，轻一点～",
+   "tagged_text": "[curious]帽子要掉啦，轻一点～",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "pat"
+  },
+  {
+   "id": "lpat01",
+   "text": "嗯……好舒服。",
+   "tagged_text": "[shy]嗯……好舒服。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "longpat"
+  },
+  {
+   "id": "lpat02",
+   "text": "再、再摸一会儿也可以哦。",
+   "tagged_text": "[shy]再、再摸一会儿也可以哦。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "longpat"
+  },
+  {
+   "id": "lpat_e01",
+   "text": "……好啦，被摸得有点不好意思了～",
+   "tagged_text": "[shy]……好啦，被摸得有点不好意思了～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "longpat_end"
+  },
+  {
+   "id": "lpat_e02",
+   "text": "谢谢你，我精神多了！",
+   "tagged_text": "[excited]谢谢你，我精神多了！",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "longpat_end"
+  },
+  {
+   "id": "lpat_e03",
+   "text": "头发……我自己理一下就好。",
+   "tagged_text": "[curious]头发……我自己理一下就好。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "longpat_end"
+  },
+  {
+   "id": "tease01",
+   "text": "好啦好啦，别戳啦～",
+   "tagged_text": "[reluctantly]好啦好啦，别戳啦～",
+   "instruction": "被逗得有点无奈的温柔大姐姐，轻轻鼓着腮小声抱怨，可爱不凶，带一点笑意。",
+   "category": "tease"
+  },
+  {
+   "id": "tease02",
+   "text": "再戳我可要鼓起来了。",
+   "tagged_text": "[reluctantly]再戳我可要鼓起来了。",
+   "instruction": "被逗得有点无奈的温柔大姐姐，轻轻鼓着腮小声抱怨，可爱不凶，带一点笑意。",
+   "category": "tease"
+  },
+  {
+   "id": "tease03",
+   "text": "戳上瘾了吗？真拿你没办法。",
+   "tagged_text": "[reluctantly]戳上瘾了吗？真拿你没办法。",
+   "instruction": "被逗得有点无奈的温柔大姐姐，轻轻鼓着腮小声抱怨，可爱不凶，带一点笑意。",
+   "category": "tease"
+  },
+  {
+   "id": "lift01",
+   "text": "哇、要带我去哪儿呀？",
+   "tagged_text": "[reluctantly]哇、要带我去哪儿呀？",
+   "instruction": "被逗得有点无奈的温柔大姐姐，轻轻鼓着腮小声抱怨，可爱不凶，带一点笑意。",
+   "category": "lift"
+  },
+  {
+   "id": "lift02",
+   "text": "诶诶，慢一点～",
+   "tagged_text": "[reluctantly]诶诶，慢一点～",
+   "instruction": "被逗得有点无奈的温柔大姐姐，轻轻鼓着腮小声抱怨，可爱不凶，带一点笑意。",
+   "category": "lift"
+  },
+  {
+   "id": "lift03",
+   "text": "有点高……你可要拿稳哦。",
+   "tagged_text": "[reluctantly]有点高……你可要拿稳哦。",
+   "instruction": "被逗得有点无奈的温柔大姐姐，轻轻鼓着腮小声抱怨，可爱不凶，带一点笑意。",
+   "category": "lift"
+  },
+  {
+   "id": "drop01",
+   "text": "好啦，就待这儿吧。",
+   "tagged_text": "[shy]好啦，就待这儿吧。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "drop"
+  },
+  {
+   "id": "drop02",
+   "text": "这里风景不错嘛～",
+   "tagged_text": "[shy]这里风景不错嘛～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "drop"
+  },
+  {
+   "id": "drop03",
+   "text": "呼……站稳了。",
+   "tagged_text": "[shy]呼……站稳了。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "drop"
+  },
+  {
+   "id": "peek01",
+   "text": "我先躲一会儿，有事叫我～",
+   "tagged_text": "[shy]我先躲一会儿，有事叫我～",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "peek"
+  },
+  {
+   "id": "peek02",
+   "text": "就露半个身子，不挡你。",
+   "tagged_text": "[shy]就露半个身子，不挡你。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "peek"
+  },
+  {
+   "id": "peekf01",
+   "text": "被发现啦～",
+   "tagged_text": "[shy]被发现啦～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "peek_found"
+  },
+  {
+   "id": "peekf02",
+   "text": "嗯？找我吗？",
+   "tagged_text": "[curious]嗯？找我吗？",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "peek_found"
+  },
+  {
+   "id": "first01",
+   "text": "你好呀，我是文昭。以后就在你桌面上陪你啦，请多关照～",
+   "tagged_text": "[shy]你好呀，我是文昭。以后就在你桌面上陪你啦，请多关照～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "first_run"
+  },
+  {
+   "id": "first02",
+   "text": "右键我或者点右下角托盘里的我，就能调大小、静音这些哦。",
+   "tagged_text": "[curious]右键我或者点右下角托盘里的我，就能调大小、静音这些哦。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "first_run_tip"
+  },
+  {
+   "id": "st_m01",
+   "text": "早上好～今天也一起加油吧！",
+   "tagged_text": "[excited]早上好～今天也一起加油吧！",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "start_morning"
+  },
+  {
+   "id": "st_m02",
+   "text": "早呀，吃早饭了吗？",
+   "tagged_text": "[shy]早呀，吃早饭了吗？",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "start_morning"
+  },
+  {
+   "id": "st_d01",
+   "text": "我来啦～有事随时叫我。",
+   "tagged_text": "[shy]我来啦～有事随时叫我。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "start_day"
+  },
+  {
+   "id": "st_d02",
+   "text": "嗯，今天也请多关照。",
+   "tagged_text": "[shy]嗯，今天也请多关照。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "start_day"
+  },
+  {
+   "id": "st_e01",
+   "text": "晚上好，今天辛苦了。",
+   "tagged_text": "[shy]晚上好，今天辛苦了。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "start_evening"
+  },
+  {
+   "id": "st_e02",
+   "text": "晚上还要忙吗？我陪你。",
+   "tagged_text": "[shy]晚上还要忙吗？我陪你。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "start_evening"
+  },
+  {
+   "id": "st_n01",
+   "text": "这么晚还开电脑呀……别熬太久哦。",
+   "tagged_text": "[curious]这么晚还开电脑呀……别熬太久哦。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "start_night"
+  },
+  {
+   "id": "st_n02",
+   "text": "夜深了，我陪你一会儿，忙完就去睡吧。",
+   "tagged_text": "[shy]夜深了，我陪你一会儿，忙完就去睡吧。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "start_night"
+  },
+  {
+   "id": "here01",
+   "text": "我已经在这儿啦～",
+   "tagged_text": "[shy]我已经在这儿啦～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "already_here"
+  },
+  {
+   "id": "here02",
+   "text": "嗯？我一直都在呀。",
+   "tagged_text": "[curious]嗯？我一直都在呀。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "already_here"
+  },
+  {
+   "id": "rec01",
+   "text": "我回来啦，刚才跑太远了。",
+   "tagged_text": "[shy]我回来啦，刚才跑太远了。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "recenter"
+  },
+  {
+   "id": "unhide01",
+   "text": "嗯，我回来了～",
+   "tagged_text": "[shy]嗯，我回来了～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "unhide"
+  },
+  {
+   "id": "quiet01",
+   "text": "好，我安静一会儿，有事点我就好。",
+   "tagged_text": "[shy]好，我安静一会儿，有事点我就好。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "quiet_on"
+  },
+  {
+   "id": "quiet02",
+   "text": "我又可以说话啦～",
+   "tagged_text": "[shy]我又可以说话啦～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "quiet_off"
+  },
+  {
+   "id": "size01",
+   "text": "这个大小可以吗？",
+   "tagged_text": "[shy]这个大小可以吗？",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "size"
+  },
+  {
+   "id": "sl_m01",
+   "text": "早上好！今天也元气满满～",
+   "tagged_text": "[excited]早上好！今天也元气满满～",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "slot_morning"
+  },
+  {
+   "id": "sl_m02",
+   "text": "早饭要记得吃哦。",
+   "tagged_text": "[shy]早饭要记得吃哦。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "slot_morning"
+  },
+  {
+   "id": "sl_l01",
+   "text": "到饭点啦，午饭吃了没有呀？",
+   "tagged_text": "[curious]到饭点啦，午饭吃了没有呀？",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "slot_lunch"
+  },
+  {
+   "id": "sl_l02",
+   "text": "先去吃饭吧，工作不会跑的。",
+   "tagged_text": "[shy]先去吃饭吧，工作不会跑的。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "slot_lunch"
+  },
+  {
+   "id": "sl_t01",
+   "text": "下午有点困吧？喝口水、伸个懒腰～",
+   "tagged_text": "[shy]下午有点困吧？喝口水、伸个懒腰～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "slot_tea"
+  },
+  {
+   "id": "sl_t02",
+   "text": "下午茶时间～歇一小会儿？",
+   "tagged_text": "[shy]下午茶时间～歇一小会儿？",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "slot_tea"
+  },
+  {
+   "id": "sl_d01",
+   "text": "晚饭要好好吃哦。",
+   "tagged_text": "[shy]晚饭要好好吃哦。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "slot_dinner"
+  },
+  {
+   "id": "sl_d02",
+   "text": "天快黑啦，今天辛苦了。",
+   "tagged_text": "[shy]天快黑啦，今天辛苦了。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "slot_dinner"
+  },
+  {
+   "id": "sl_n01",
+   "text": "这么晚了，早点睡吧。",
+   "tagged_text": "[shy]这么晚了，早点睡吧。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "slot_late"
+  },
+  {
+   "id": "sl_n02",
+   "text": "十一点多啦，收个尾就去休息好不好？",
+   "tagged_text": "[curious]十一点多啦，收个尾就去休息好不好？",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "slot_late"
+  },
+  {
+   "id": "sl_dp01",
+   "text": "都这个点了，快去睡觉。",
+   "tagged_text": "[curious]都这个点了，快去睡觉。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "slot_deep"
+  },
+  {
+   "id": "sl_dp02",
+   "text": "熬夜对身体不好的……我会担心的。",
+   "tagged_text": "[curious]熬夜对身体不好的……我会担心的。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "slot_deep"
+  },
+  {
+   "id": "sleepy01",
+   "text": "嗯……还没睡呀？",
+   "tagged_text": "[shy]嗯……还没睡呀？",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "sleepy"
+  },
+  {
+   "id": "sleepy02",
+   "text": "我、我没睡着哦……你也快去睡吧。",
+   "tagged_text": "[curious]我、我没睡着哦……你也快去睡吧。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "sleepy"
+  },
+  {
+   "id": "sleepy03",
+   "text": "呼……有点困了呢。",
+   "tagged_text": "[shy]呼……有点困了呢。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "sleepy"
+  },
+  {
+   "id": "ret01",
+   "text": "回来啦～",
+   "tagged_text": "[shy]回来啦～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "return_short"
+  },
+  {
+   "id": "ret02",
+   "text": "欢迎回来！",
+   "tagged_text": "[excited]欢迎回来！",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "return_short"
+  },
+  {
+   "id": "ret03",
+   "text": "回来啦，刚才去干嘛了呀？",
+   "tagged_text": "[curious]回来啦，刚才去干嘛了呀？",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "return_short"
+  },
+  {
+   "id": "retl01",
+   "text": "去了好久呀，回来就好～",
+   "tagged_text": "[shy]去了好久呀，回来就好～",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "return_long"
+  },
+  {
+   "id": "retl02",
+   "text": "等你好久啦……没事，我不着急。",
+   "tagged_text": "[shy]等你好久啦……没事，我不着急。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "return_long"
+  },
+  {
+   "id": "retm01",
+   "text": "早上好呀，昨晚睡得好吗？",
+   "tagged_text": "[shy]早上好呀，昨晚睡得好吗？",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "return_morning"
+  },
+  {
+   "id": "stand01",
+   "text": "坐好久啦，起来走走好不好？",
+   "tagged_text": "[curious]坐好久啦，起来走走好不好？",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "stand"
+  },
+  {
+   "id": "stand02",
+   "text": "已经连续忙了很久了，站起来伸个懒腰吧～",
+   "tagged_text": "[shy]已经连续忙了很久了，站起来伸个懒腰吧～",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "stand"
+  },
+  {
+   "id": "water01",
+   "text": "喝口水吧，我等你～",
+   "tagged_text": "[shy]喝口水吧，我等你～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "water"
+  },
+  {
+   "id": "water02",
+   "text": "杯子里的水还有吗？",
+   "tagged_text": "[curious]杯子里的水还有吗？",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "water"
+  },
+  {
+   "id": "pomo01",
+   "text": "好，开始专注！我安静陪着你。",
+   "tagged_text": "[excited]好，开始专注！我安静陪着你。",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "pomo_start"
+  },
+  {
+   "id": "pomo02",
+   "text": "专注结束啦，辛苦了～起来活动一下吧。",
+   "tagged_text": "[shy]专注结束啦，辛苦了～起来活动一下吧。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "pomo_focus_end"
+  },
+  {
+   "id": "pomo03",
+   "text": "一个番茄完成！做得很好哦。",
+   "tagged_text": "[excited]一个番茄完成！做得很好哦。",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "pomo_focus_end"
+  },
+  {
+   "id": "pomo04",
+   "text": "休息好了吗？我们继续～",
+   "tagged_text": "[shy]休息好了吗？我们继续～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "pomo_break_end"
+  },
+  {
+   "id": "cnt01",
+   "text": "已经专心半小时啦，很棒哦。",
+   "tagged_text": "[shy]已经专心半小时啦，很棒哦。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "count_30"
+  },
+  {
+   "id": "cnt02",
+   "text": "已经两个小时了……起来动一动好不好？我等你回来。",
+   "tagged_text": "[curious]已经两个小时了……起来动一动好不好？我等你回来。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "count_120"
+  },
+  {
+   "id": "dh01",
+   "text": "嗯？要给我看什么？",
+   "tagged_text": "[curious]嗯？要给我看什么？",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "drop_hover"
+  },
+  {
+   "id": "dexe01",
+   "text": "这个……我先不碰哦。",
+   "tagged_text": "[curious]这个……我先不碰哦。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "drop_exe"
+  },
+  {
+   "id": "dexe02",
+   "text": "是程序呀，来路要看清楚哦。",
+   "tagged_text": "[curious]是程序呀，来路要看清楚哦。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "drop_exe"
+  },
+  {
+   "id": "dlnk01",
+   "text": "快捷方式呀，我就看看，不乱点～",
+   "tagged_text": "[shy]快捷方式呀，我就看看，不乱点～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "drop_lnk"
+  },
+  {
+   "id": "dimg01",
+   "text": "是图片呀～真好看。",
+   "tagged_text": "[shy]是图片呀～真好看。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "drop_img"
+  },
+  {
+   "id": "dimg02",
+   "text": "这张我先替你记着～",
+   "tagged_text": "[shy]这张我先替你记着～",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "drop_img"
+  },
+  {
+   "id": "dpsd01",
+   "text": "在画画吗？好厉害！",
+   "tagged_text": "[excited]在画画吗？好厉害！",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "drop_psd"
+  },
+  {
+   "id": "ddoc01",
+   "text": "又在写东西呀，辛苦啦。",
+   "tagged_text": "[shy]又在写东西呀，辛苦啦。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "drop_doc"
+  },
+  {
+   "id": "dxls01",
+   "text": "表格……是账本吗？我最喜欢看账本了～",
+   "tagged_text": "[excited]表格……是账本吗？我最喜欢看账本了～",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "drop_sheet"
+  },
+  {
+   "id": "dppt01",
+   "text": "要做汇报吗？一定会顺利的。",
+   "tagged_text": "[shy]要做汇报吗？一定会顺利的。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "drop_ppt"
+  },
+  {
+   "id": "dpdf01",
+   "text": "资料好多，慢慢看，不着急。",
+   "tagged_text": "[curious]资料好多，慢慢看，不着急。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "drop_pdf"
+  },
+  {
+   "id": "dtxt01",
+   "text": "小笔记吗？我不偷看～",
+   "tagged_text": "[shy]小笔记吗？我不偷看～",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "drop_txt"
+  },
+  {
+   "id": "dcode01",
+   "text": "在写代码呀，记得多存几次哦。",
+   "tagged_text": "[curious]在写代码呀，记得多存几次哦。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "drop_code"
+  },
+  {
+   "id": "dmus01",
+   "text": "是歌吗？我也想听～",
+   "tagged_text": "[shy]是歌吗？我也想听～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "drop_music"
+  },
+  {
+   "id": "dvid01",
+   "text": "视频呀……是下一期的素材吗？",
+   "tagged_text": "[curious]视频呀……是下一期的素材吗？",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "drop_video"
+  },
+  {
+   "id": "dzip01",
+   "text": "压缩包里装的什么呀？我就不拆了～",
+   "tagged_text": "[curious]压缩包里装的什么呀？我就不拆了～",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "drop_zip"
+  },
+  {
+   "id": "dfont01",
+   "text": "是字体呀，这个字好看吗？",
+   "tagged_text": "[shy]是字体呀，这个字好看吗？",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "drop_font"
+  },
+  {
+   "id": "ddir01",
+   "text": "一整个文件夹？我帮你看着，不乱动～",
+   "tagged_text": "[shy]一整个文件夹？我帮你看着，不乱动～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "drop_folder"
+  },
+  {
+   "id": "dmul01",
+   "text": "这么多呀……我一个一个看，都不会弄丢的。",
+   "tagged_text": "[curious]这么多呀……我一个一个看，都不会弄丢的。",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "drop_multi"
+  },
+  {
+   "id": "doth01",
+   "text": "这是什么呀？我看不太懂，不过先还给你～",
+   "tagged_text": "[curious]这是什么呀？我看不太懂，不过先还给你～",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "drop_other"
+  },
+  {
+   "id": "fri01",
+   "text": "周五啦，这周辛苦了！",
+   "tagged_text": "[excited]周五啦，这周辛苦了！",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "friday_night"
+  },
+  {
+   "id": "wkd01",
+   "text": "周末也在忙吗？记得留点时间给自己哦。",
+   "tagged_text": "[shy]周末也在忙吗？记得留点时间给自己哦。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "weekend"
+  },
+  {
+   "id": "sea_sp01",
+   "text": "春天到啦，窗外的花开了吗？",
+   "tagged_text": "[shy]春天到啦，窗外的花开了吗？",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "season_spring"
+  },
+  {
+   "id": "sea_su01",
+   "text": "天好热，多喝点水哦。",
+   "tagged_text": "[shy]天好热，多喝点水哦。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "season_summer"
+  },
+  {
+   "id": "sea_au01",
+   "text": "天气转凉了，记得加件衣服哦。",
+   "tagged_text": "[shy]天气转凉了，记得加件衣服哦。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "season_autumn"
+  },
+  {
+   "id": "sea_wi01",
+   "text": "好冷呀……手暖和吗？",
+   "tagged_text": "[curious]好冷呀……手暖和吗？",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "season_winter"
+  },
+  {
+   "id": "hol_ny01",
+   "text": "新年快乐！今年也请多关照～",
+   "tagged_text": "[excited]新年快乐！今年也请多关照～",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "hol_newyear"
+  },
+  {
+   "id": "hol_nye01",
+   "text": "今年最后一天啦，辛苦你了一整年。",
+   "tagged_text": "[shy]今年最后一天啦，辛苦你了一整年。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "hol_newyear_eve"
+  },
+  {
+   "id": "hol_sf01",
+   "text": "过年好！新的一年，平平安安～",
+   "tagged_text": "[excited]过年好！新的一年，平平安安～",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "hol_springfest"
+  },
+  {
+   "id": "hol_se01",
+   "text": "除夕啦，要和家人好好吃顿饭哦。",
+   "tagged_text": "[shy]除夕啦，要和家人好好吃顿饭哦。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "hol_springeve"
+  },
+  {
+   "id": "hol_lt01",
+   "text": "元宵节快乐，吃汤圆了吗？",
+   "tagged_text": "[shy]元宵节快乐，吃汤圆了吗？",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "hol_lantern"
+  },
+  {
+   "id": "hol_vl01",
+   "text": "今天是情人节呢……嗯，你也要被好好对待哦。",
+   "tagged_text": "[shy]今天是情人节呢……嗯，你也要被好好对待哦。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "hol_valentine"
+  },
+  {
+   "id": "hol_lb01",
+   "text": "劳动节快乐！今天就别太劳动啦。",
+   "tagged_text": "[shy]劳动节快乐！今天就别太劳动啦。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "hol_labor"
+  },
+  {
+   "id": "hol_ch01",
+   "text": "儿童节快乐～大人也可以过的哦。",
+   "tagged_text": "[excited]儿童节快乐～大人也可以过的哦。",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "hol_children"
+  },
+  {
+   "id": "hol_db01",
+   "text": "端午安康，粽子吃甜的还是咸的呀？",
+   "tagged_text": "[curious]端午安康，粽子吃甜的还是咸的呀？",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "hol_dragonboat"
+  },
+  {
+   "id": "hol_qx01",
+   "text": "七夕呢……今晚的星星应该很好看。",
+   "tagged_text": "[shy]七夕呢……今晚的星星应该很好看。",
+   "instruction": "温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。",
+   "category": "hol_qixi"
+  },
+  {
+   "id": "hol_tc01",
+   "text": "教师节呀，有想感谢的老师吗？",
+   "tagged_text": "[curious]教师节呀，有想感谢的老师吗？",
+   "instruction": "温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。",
+   "category": "hol_teacher"
+  },
+  {
+   "id": "hol_ma01",
+   "text": "中秋快乐，记得抬头看看月亮～",
+   "tagged_text": "[shy]中秋快乐，记得抬头看看月亮～",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "hol_midautumn"
+  },
+  {
+   "id": "hol_nt01",
+   "text": "国庆假期，出去玩还是在家歇着呀？",
+   "tagged_text": "[shy]国庆假期，出去玩还是在家歇着呀？",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "hol_national"
+  },
+  {
+   "id": "hol_1024",
+   "text": "今天是程序员节！写代码的人都辛苦啦。",
+   "tagged_text": "[excited]今天是程序员节！写代码的人都辛苦啦。",
+   "instruction": "元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。",
+   "category": "hol_1024"
+  },
+  {
+   "id": "hol_hw01",
+   "text": "万圣节……我、我才不怕呢。",
+   "tagged_text": "[reluctantly]万圣节……我、我才不怕呢。",
+   "instruction": "被逗得有点无奈的温柔大姐姐，轻轻鼓着腮小声抱怨，可爱不凶，带一点笑意。",
+   "category": "hol_halloween"
+  },
+  {
+   "id": "hol_xm01",
+   "text": "圣诞快乐～今天也暖暖的。",
+   "tagged_text": "[shy]圣诞快乐～今天也暖暖的。",
+   "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
+   "category": "hol_xmas"
+  },
+  {
+   "id": "stretch01",
+   "text": "唔……伸个懒腰，骨头都响了一下。",
+   "tagged_text": "[shy]唔……伸个懒腰，骨头都响了一下。",
+   "instruction": "刚伸完懒腰的温柔大姐姐，舒展、放松，尾音带一点满足的叹气。",
+   "category": "stretch"
+  },
+  {
+   "id": "stretch02",
+   "text": "坐太久了吧？我也起来动动。",
+   "tagged_text": "[shy]坐太久了吧？我也起来动动。",
+   "instruction": "刚伸完懒腰的温柔大姐姐，舒展、放松，尾音带一点满足的叹气。",
+   "category": "stretch"
+  },
+  {
+   "id": "stretch03",
+   "text": "早上好呀，今天也一起加油。",
+   "tagged_text": "[shy]早上好呀，今天也一起加油。",
+   "instruction": "刚伸完懒腰的温柔大姐姐，舒展、放松，尾音带一点满足的叹气。",
+   "category": "stretch"
+  },
+  {
+   "id": "stretch04",
+   "text": "肩膀酸不酸？我陪你松一松。",
+   "tagged_text": "[shy]肩膀酸不酸？我陪你松一松。",
+   "instruction": "刚伸完懒腰的温柔大姐姐，舒展、放松，尾音带一点满足的叹气。",
+   "category": "stretch"
+  },
+  {
+   "id": "stretch05",
+   "text": "这一觉睡的，头发都翘起来了。",
+   "tagged_text": "[shy]这一觉睡的，头发都翘起来了。",
+   "instruction": "刚伸完懒腰的温柔大姐姐，舒展、放松，尾音带一点满足的叹气。",
+   "category": "stretch"
+  },
+  {
+   "id": "night11",
+   "text": "夜深了，我有点困了……",
+   "tagged_text": "[reluctantly]夜深了，我有点困了……",
+   "instruction": "深夜有点困的温柔大姐姐，声音放轻、慢一点，带一点哈欠后的鼻音。",
+   "category": "yawn"
+  },
+  {
+   "id": "night12",
+   "text": "你还不睡？我先打个哈欠给你看。",
+   "tagged_text": "[reluctantly]你还不睡？我先打个哈欠给你看。",
+   "instruction": "深夜有点困的温柔大姐姐，声音放轻、慢一点，带一点哈欠后的鼻音。",
+   "category": "yawn"
+  },
+  {
+   "id": "night13",
+   "text": "再写十分钟就休息，说好了哦。",
+   "tagged_text": "[reluctantly]再写十分钟就休息，说好了哦。",
+   "instruction": "深夜有点困的温柔大姐姐，声音放轻、慢一点，带一点哈欠后的鼻音。",
+   "category": "yawn"
+  },
+  {
+   "id": "night14",
+   "text": "灯关小一点吧，眼睛会累。",
+   "tagged_text": "[reluctantly]灯关小一点吧，眼睛会累。",
+   "instruction": "深夜有点困的温柔大姐姐，声音放轻、慢一点，带一点哈欠后的鼻音。",
+   "category": "yawn"
+  },
+  {
+   "id": "ack01",
+   "text": "嗯，我听着呢。",
+   "tagged_text": "[curious]嗯，我听着呢。",
+   "instruction": "认真听你说话的温柔大姐姐，短促、肯定、语气平稳。",
+   "category": "ack"
+  },
+  {
+   "id": "ack02",
+   "text": "好，记下了。",
+   "tagged_text": "[curious]好，记下了。",
+   "instruction": "认真听你说话的温柔大姐姐，短促、肯定、语气平稳。",
+   "category": "ack"
+  },
+  {
+   "id": "ack03",
+   "text": "这个我知道。",
+   "tagged_text": "[curious]这个我知道。",
+   "instruction": "认真听你说话的温柔大姐姐，短促、肯定、语气平稳。",
+   "category": "ack"
+  },
+  {
+   "id": "ack04",
+   "text": "等一下，让我想想。",
+   "tagged_text": "[curious]等一下，让我想想。",
+   "instruction": "认真听你说话的温柔大姐姐，短促、肯定、语气平稳。",
+   "category": "ack"
+  },
+  {
+   "id": "nap01",
+   "text": "我趴一会儿……有事叫我。",
+   "tagged_text": "[shy]我趴一会儿……有事叫我。",
+   "instruction": "迷迷糊糊快睡着的温柔大姐姐，声音很轻很慢，像在小声嘟囔。",
+   "category": "nap"
+  },
+  {
+   "id": "nap02",
+   "text": "就眯五分钟，真的。",
+   "tagged_text": "[shy]就眯五分钟，真的。",
+   "instruction": "迷迷糊糊快睡着的温柔大姐姐，声音很轻很慢，像在小声嘟囔。",
+   "category": "nap"
+  },
+  {
+   "id": "nap03",
+   "text": "你也歇一下嘛，我在这儿。",
+   "tagged_text": "[shy]你也歇一下嘛，我在这儿。",
+   "instruction": "迷迷糊糊快睡着的温柔大姐姐，声音很轻很慢，像在小声嘟囔。",
+   "category": "nap"
+  },
+  {
+   "id": "nap04",
+   "text": "毯子……哦不对，是外套。",
+   "tagged_text": "[shy]毯子……哦不对，是外套。",
+   "instruction": "迷迷糊糊快睡着的温柔大姐姐，声音很轻很慢，像在小声嘟囔。",
+   "category": "nap"
+  }
+ ]
+}

@@ -1,5 +1,66 @@
 # 更新记录
 
+## v0.3.11（2026-10-30）· 四个新动作，Windows / macOS 同步
+
+### 新动作（两种模式都有）
+- **伸懒腰 stretch / 打哈欠 yawn / 点头 nod / 打盹 nap**。帧号仍按 12fps 写在 EXPR 里，素材是 24fps，按每个动作自己的 fps 放大（`Sprites.akf`）；动作播放时动画节拍跟着变成 24fps，回到待机再变回 12fps；人不在时仍是 250ms 一拍。
+- 飘着版伸懒腰用 **24fps 高画布 251×416**（manifest `anchor_offset_y: 36`）：底边对齐脚底，多出的 36px 往头顶上画，不缩放不拉伸；窗口遮罩、点击区、气泡都跟着让。
+- 打盹 enter 播到睡着的末帧，hold 从呼吸循环起点接着正向循环（飘着 `loop_from: 48`，长脚 `loop_from: 64`）。点她一下醒来、接伸懒腰。
+- 素材是**返工帧**：消跳（相邻帧差超阈值的地方用相邻两张真实帧之间的光流中间帧补，不做图层变形）+ 首尾对齐待机第 0 帧（nap 末帧是睡着，豁免）。飘着版由 24fps 原帧重做返工；长脚版直接用返工包的 `sprites_legs`（375×614，24fps）。全部过 `check_sprite_frames`。导入脚本 `tools/import_p0_v0311.py`。
+- 自动触发（`new_action_tick`）：伸懒腰——早上第一次 / 连续用电脑 90 分钟；打哈欠——23 点到 5 点，40 分钟冷却；打盹——10 分钟没操作且没在说话。启动 5 分钟内、安静、全屏、藏起来时都不触发；优先级最低，不抢计时、回来问候、提醒和外部消息。右键「动作试播」可以手动播。
+- 台词：新增 stretch / yawn / ack / nap 四类（`voice_plan_pet.json` 已重新导出）。
+
+### 其他
+- 右键菜单和托盘菜单点勾选项后不立刻收起（StickyMenu）。
+- 可选联网人格 `pet_online.py`：`ZHANGGUI_PET_ONLINE=1` 才加载，默认关；Windows 播放走 `winsound`，不写死 Mac 路径、不装开机自启。服务不在时照常离线跑。
+- 发布包不含全量语音（和 v0.3.10 一样）。
+- 测试：新增 `tests/test_v0311.py`；旧测试按新素材（12 个动画、高画布、单动作 fps）更新。
+
+## 未发布 · 任务卡确认流（M2）
+
+- 版本仍是 **0.3.10**。粉丝包默认还是看不到「高级」：打包后要设置里 `show_control_menu` 为 true 才出现。开关默认关。
+- `pet_ctl card` 子命令：`draft` / `prepare` / `receipt` / `report` / `withdraw`，参数 `--json-base64`，多一个字段就拒绝。没有 `confirm` 命令，确认只能在任务卡上点。
+- 任务卡小窗：完整正文可滚动；按钮「确认 / 改一下 / 不要」。草稿阶段没有「确认」。「改一下」只记 `revise_requested`，桌宠里不改正文。
+- 回执簿 `receipts.jsonl` 在配置目录（macOS：`~/Library/Application Support/ZhangguiPet`），只追加。写成功才改卡片。同一张单只确认一次；`expectedVersion` 不对是 `conflict`；阶段不能倒退或跳步；待确认 24 小时没点变成 `unavailable`。
+- 回单里的文字只显示（先过长度和 `redact_text()`），不当命令。类别：`money` / `delete` / `outbound` / `direction`。
+- 测试：`QT_QPA_PLATFORM=offscreen python tests/test_control_m2.py`。
+
+## 未发布 · 本机助手通道（M1）
+
+- 菜单「高级 → 允许本机助手控制我（实验）」。默认关。源码运行看得到；打包后的粉丝版默认不显示这项，要在设置里把 `show_control_menu` 写成 true 才出现。
+- 打开后只听 `127.0.0.1`（默认 **6710**，设置项 `control_port`）。口令在配置目录 `control_token`（权限 600）。关掉会停止监听并清空还没说的队列。
+- 命令：`python3 tools/pet_ctl.py status`，`python3 tools/pet_ctl.py say --json-base64 …`，以及 `feedback` / `wait`。失败输出 `{"ok":false,...}`，退出码 1。`wait` 超时仍是成功（退出码 0），返回当前游标。
+- `say` 的 `options` 画成气泡按钮。点过的按钮留在内存里，`feedback` / `wait` 用 `since` 只读返回更新的点击，不写回执簿、不做任务卡。日志不记口令、气泡正文和按钮文字。
+- 安静时外部 `normal` 不说（`skipped:quiet`）；`important` 只出气泡不出声。外部 `normal` 不抢计时、戳她和离线脑的话。
+- 测试：`QT_QPA_PLATFORM=offscreen python tests/test_control_m1.py`。
+
+## 未发布 · 底边探头表情位置
+
+- 藏到屏幕边上时，流汗、气团、zzz、感叹号和摸头爱心改锚在当前探头图露出来的发冠上。下边探头的人在画布底部，以前这些特效还按站姿上半身的头顶画，会浮在窗口上方、离头很远。左/右探头（长脚画布更明显）也不再悬在身子旁边的空处。没在躲边时位置不变。气泡和计时牌原来的贴边算法没改。
+- 测试：`tests/test_v036.py` 的 `test_fx_follows_visible_head`，`tests/test_v037.py` 的 `test_10_peek_fx_follows_head_with_legs`。
+
+## v0.3.10（2026-10-25）
+
+### 右探头白缝与探头 @2x
+- 右探头白缝：飘着模式右侧 1x 换成交回的 251×380（`assets/peek/shy_right.png`、`tilt_right.png`），贴边时不再露出白缝。左、上、下的 1x 和长脚 `peek_legs` 没动。
+- 探头 @2x 高清：交回的八张是右侧 1x 两张（A）加六张 502×760（B）。六张放在 `assets/peek/@2x/`（shy_left、shy_right、tilt_left、tilt_right、tilt_top、tilt_bottom，含 B 的 shy_right）。屏幕缩放大于 100%，或立绘放大超过 1x 画布时，按屏幕像素加载这套图，再画进原来的 251×380 逻辑框，贴边位置不变。100% 且原始大小仍用 1x，右侧已经是修好白缝的新图。不会把 502 的图缩回 251 再放大。
+
+### 安静一段时间可自选时长
+- 右键和托盘不再只有「安静一小时」。共用的 `fill_menu` 把这一项放在「显示她 / 总在最前」后面、飘着/大小前面，标题是「安静一段时间」：15 分钟、30 分钟、1 小时，以及「自定义…」（1–1440 分钟）。倒计时用选中的分钟数，不再写死 60 分钟。
+- 安静进行中，第一屏仍先显示「结束安静（还剩 N 分钟）」，点一下就结束；子菜单里再选时长会按新的时长重新算。气泡会说出这次选的时长。
+- 台词 `quiet01` 不再写成「待一小时」（进入安静时本来就不出声）。配音计划同步这一句。
+- 测试：`tests/test_voice_pack.py` 覆盖菜单位置、预设和自定义分钟。
+
+### 可选离线语音包
+- 骨架先不附 128 句：`assets/voice/<台词id>.wav` 或 `.ogg`。没有音频文件时只冒文字气泡，不报错、不联网。macOS 先探测系统 `afplay`，再才是 paplay / aplay / ffplay。菜单「声音」显示「还没装语音包」或「语音包：已装 N 句」。主路径不接在线 TTS。说明见 README 和 `assets/voice/README.md`。
+- 测试：`tests/test_voice_pack.py`；`packaging/build_win.ps1 -RunTests` 也跑它。
+
+### 安装说明
+- README 和 `说明.txt` 写了解压后怎么打开：不用安装。Windows 双击 `ZhangguiPet.exe`，macOS 打开 `ZhangguiPet.app`。解压后如果没有 exe、只有 `zhanggui_pet.py`，那是源码，按 README 用 Python 打开。
+
+### 版本
+- 程序内显示版本、`packaging/version_info.txt`（0.3.10.0）、`说明.txt`、Windows / macOS 打包脚本的默认版本都是 0.3.10。
+
 ## v0.3.9（2026-10-24）
 
 ### nolegs 测试版补充（2026-10-25）

@@ -1,0 +1,29 @@
+# PyInstaller 版本信息（exe「属性 → 详细信息」里显示的内容）。CompanyName 故意留空。
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(0, 3, 11, 0),
+    prodvers=(0, 3, 11, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo([
+      StringTable(
+        u'080404B0',
+        [StringStruct(u'CompanyName', u''),
+         StringStruct(u'FileDescription', u'掌柜台桌宠'),
+         StringStruct(u'FileVersion', u'0.3.11.0'),
+         StringStruct(u'InternalName', u'ZhangguiPet'),
+         StringStruct(u'LegalCopyright', u'代码 MIT；美术版权归原作者'),
+         StringStruct(u'OriginalFilename', u'ZhangguiPet.exe'),
+         StringStruct(u'ProductName', u'掌柜台桌宠'),
+         StringStruct(u'ProductVersion', u'0.3.11'),
+         StringStruct(u'Comments', u'非官方粉丝二创，与阿里巴巴及通义千问无隶属或合作关系。免费，含 AI 生成内容')])
+    ]),
+    VarFileInfo([VarStruct(u'Translation', [0x0804, 1200])])
+  ]
+)

@@ -1,0 +1,92 @@
+{
+ "w": 375,
+ "h": 614,
+ "fps": 24.0,
+ "padx": 62,
+ "upper_x": 58,
+ "upper_y": 0,
+ "upper_w": 251,
+ "upper_h": 380,
+ "foot_y": 600,
+ "foot_x": 187.5,
+ "anims": {
+  "idle": {
+   "n": 144,
+   "type": "loop",
+   "src": "v4_idle_a"
+  },
+  "smile": {
+   "n": 144,
+   "type": "clip",
+   "src": "v4_smile_b"
+  },
+  "smug": {
+   "n": 144,
+   "type": "clip",
+   "src": "v4_smug_b"
+  },
+  "thinking": {
+   "n": 144,
+   "type": "clip",
+   "src": "v4_thinking_b"
+  },
+  "smug_hold": {
+   "n": 48,
+   "type": "hold",
+   "src": "v4_smug_hold_b"
+  },
+  "thinking_hold": {
+   "n": 48,
+   "type": "hold",
+   "src": "v4_thinking_hold_b"
+  },
+  "wave": {
+   "n": 96,
+   "type": "clip",
+   "src": "v4_wave_a"
+  },
+  "huff": {
+   "n": 96,
+   "type": "clip",
+   "src": "v4_huff_f"
+  },
+  "stretch": {
+   "n": 120,
+   "type": "clip",
+   "src": "rework_20261030_legs"
+  },
+  "yawn": {
+   "n": 96,
+   "type": "clip",
+   "src": "rework_20261030_legs"
+  },
+  "nod": {
+   "n": 48,
+   "type": "loop",
+   "src": "rework_20261030_legs"
+  },
+  "nap": {
+   "n": 144,
+   "type": "loop",
+   "loop_from": 64,
+   "src": "rework_20261030_legs"
+  }
+ },
+ "fx": {
+  "sweat": {
+   "img": "sweat.png",
+   "at": [
+    234.4,
+    52.4
+   ]
+  },
+  "puff": {
+   "img": "puff.png",
+   "at": [
+    133.1,
+    104.8
+   ]
+  }
+ },
+ "note": "v0.3.9 长脚 24fps（v0.3.8 起 8 段都是 v4 风格整身重画，有腿，wave/huff 也有；huff 用 huff_f）。画布 375x614，左右各留 62；脚底 y=600、脚中 x=187.5。upper_x/upper_y/upper_w/upper_h = 头和上半身框（摸头区、zzz、爱心、计时牌、下边躲藏阈值用），由旧 251x380 上半身的头部在新图上匹配得到；fx.at 已经加过 upper_x/upper_y。"
+}
