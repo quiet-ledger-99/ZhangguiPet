@@ -5,7 +5,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PY="${1:-$ROOT/../.venv/bin/python}"
-VERSION="${ZGP_VERSION:-0.3.10}"
+VERSION="${ZGP_VERSION:-0.3.11}"
 cd "$ROOT"
 "$PY" pet_lines.py
 mkdir -p build/ZhangguiPet.iconset

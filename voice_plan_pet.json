@@ -901,6 +901,125 @@
    "tagged_text": "[shy]圣诞快乐～今天也暖暖的。",
    "instruction": "温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。",
    "category": "hol_xmas"
+  },
+  {
+   "id": "stretch01",
+   "text": "唔……伸个懒腰，骨头都响了一下。",
+   "tagged_text": "[shy]唔……伸个懒腰，骨头都响了一下。",
+   "instruction": "刚伸完懒腰的温柔大姐姐，舒展、放松，尾音带一点满足的叹气。",
+   "category": "stretch"
+  },
+  {
+   "id": "stretch02",
+   "text": "坐太久了吧？我也起来动动。",
+   "tagged_text": "[shy]坐太久了吧？我也起来动动。",
+   "instruction": "刚伸完懒腰的温柔大姐姐，舒展、放松，尾音带一点满足的叹气。",
+   "category": "stretch"
+  },
+  {
+   "id": "stretch03",
+   "text": "早上好呀，今天也一起加油。",
+   "tagged_text": "[shy]早上好呀，今天也一起加油。",
+   "instruction": "刚伸完懒腰的温柔大姐姐，舒展、放松，尾音带一点满足的叹气。",
+   "category": "stretch"
+  },
+  {
+   "id": "stretch04",
+   "text": "肩膀酸不酸？我陪你松一松。",
+   "tagged_text": "[shy]肩膀酸不酸？我陪你松一松。",
+   "instruction": "刚伸完懒腰的温柔大姐姐，舒展、放松，尾音带一点满足的叹气。",
+   "category": "stretch"
+  },
+  {
+   "id": "stretch05",
+   "text": "这一觉睡的，头发都翘起来了。",
+   "tagged_text": "[shy]这一觉睡的，头发都翘起来了。",
+   "instruction": "刚伸完懒腰的温柔大姐姐，舒展、放松，尾音带一点满足的叹气。",
+   "category": "stretch"
+  },
+  {
+   "id": "night11",
+   "text": "夜深了，我有点困了……",
+   "tagged_text": "[reluctantly]夜深了，我有点困了……",
+   "instruction": "深夜有点困的温柔大姐姐，声音放轻、慢一点，带一点哈欠后的鼻音。",
+   "category": "yawn"
+  },
+  {
+   "id": "night12",
+   "text": "你还不睡？我先打个哈欠给你看。",
+   "tagged_text": "[reluctantly]你还不睡？我先打个哈欠给你看。",
+   "instruction": "深夜有点困的温柔大姐姐，声音放轻、慢一点，带一点哈欠后的鼻音。",
+   "category": "yawn"
+  },
+  {
+   "id": "night13",
+   "text": "再写十分钟就休息，说好了哦。",
+   "tagged_text": "[reluctantly]再写十分钟就休息，说好了哦。",
+   "instruction": "深夜有点困的温柔大姐姐，声音放轻、慢一点，带一点哈欠后的鼻音。",
+   "category": "yawn"
+  },
+  {
+   "id": "night14",
+   "text": "灯关小一点吧，眼睛会累。",
+   "tagged_text": "[reluctantly]灯关小一点吧，眼睛会累。",
+   "instruction": "深夜有点困的温柔大姐姐，声音放轻、慢一点，带一点哈欠后的鼻音。",
+   "category": "yawn"
+  },
+  {
+   "id": "ack01",
+   "text": "嗯，我听着呢。",
+   "tagged_text": "[curious]嗯，我听着呢。",
+   "instruction": "认真听你说话的温柔大姐姐，短促、肯定、语气平稳。",
+   "category": "ack"
+  },
+  {
+   "id": "ack02",
+   "text": "好，记下了。",
+   "tagged_text": "[curious]好，记下了。",
+   "instruction": "认真听你说话的温柔大姐姐，短促、肯定、语气平稳。",
+   "category": "ack"
+  },
+  {
+   "id": "ack03",
+   "text": "这个我知道。",
+   "tagged_text": "[curious]这个我知道。",
+   "instruction": "认真听你说话的温柔大姐姐，短促、肯定、语气平稳。",
+   "category": "ack"
+  },
+  {
+   "id": "ack04",
+   "text": "等一下，让我想想。",
+   "tagged_text": "[curious]等一下，让我想想。",
+   "instruction": "认真听你说话的温柔大姐姐，短促、肯定、语气平稳。",
+   "category": "ack"
+  },
+  {
+   "id": "nap01",
+   "text": "我趴一会儿……有事叫我。",
+   "tagged_text": "[shy]我趴一会儿……有事叫我。",
+   "instruction": "迷迷糊糊快睡着的温柔大姐姐，声音很轻很慢，像在小声嘟囔。",
+   "category": "nap"
+  },
+  {
+   "id": "nap02",
+   "text": "就眯五分钟，真的。",
+   "tagged_text": "[shy]就眯五分钟，真的。",
+   "instruction": "迷迷糊糊快睡着的温柔大姐姐，声音很轻很慢，像在小声嘟囔。",
+   "category": "nap"
+  },
+  {
+   "id": "nap03",
+   "text": "你也歇一下嘛，我在这儿。",
+   "tagged_text": "[shy]你也歇一下嘛，我在这儿。",
+   "instruction": "迷迷糊糊快睡着的温柔大姐姐，声音很轻很慢，像在小声嘟囔。",
+   "category": "nap"
+  },
+  {
+   "id": "nap04",
+   "text": "毯子……哦不对，是外套。",
+   "tagged_text": "[shy]毯子……哦不对，是外套。",
+   "instruction": "迷迷糊糊快睡着的温柔大姐姐，声音很轻很慢，像在小声嘟囔。",
+   "category": "nap"
   }
  ]
 }

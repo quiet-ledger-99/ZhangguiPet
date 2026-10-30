@@ -35,9 +35,10 @@ from PySide6.QtWidgets import QApplication
 app = QApplication.instance() or QApplication([])
 A = ROOT / 'assets'
 W, H, SOLE_Y, FOOT_X = 375, 614, 600, 187.5
-ANIMS = ('idle', 'smile', 'smug', 'thinking', 'smug_hold', 'thinking_hold', 'wave', 'huff')
+ANIMS = ('idle', 'smile', 'smug', 'thinking', 'smug_hold', 'thinking_hold', 'wave', 'huff',
+         'stretch', 'yawn', 'nod', 'nap')   # v0.3.11：+ P0 四动作（返工帧，24fps）
 # assets/sprites、masks、peek、fx（飘着模式用的全部素材）的合并哈希：v0.3.9 发布包合并哈希（含发布处理）
-FLOAT_ASSETS_SHA = '2efffe4d51707290e777f0d6aa8bc17ea8bac63522b5df1c27903621e2cc93b4'  # 飘着躲边：右侧 1x 换成交回 A，@2x 接入 B 的 502×760
+FLOAT_ASSETS_SHA = '740e2715dbf4cb2ca8eff2e8c2a20e4bc41cf87b8064dda259e80fa535258f94'  # 飘着躲边：右侧 1x 换成交回 A，@2x 接入 B 的 502×760；v0.3.11 加 P0 四动作（stretch 高画布）+ manifest，旧文件未动
 
 
 class Alpha:
@@ -97,7 +98,8 @@ class LegsArt(unittest.TestCase):
                     self.assertEqual((a.h, a.w), (H, W))
                     rows = a.rows(40)
                     self.assertLessEqual(abs(max(rows) - SOLE_Y), 2)                     # 鞋底在 y=600
-                    self.assertLessEqual(min(rows), 6)                                   # 帽顶贴近画布顶，但没出画布
+                    # 帽顶贴近画布顶，但没出画布；v0.3.11 打盹低头，帽顶会往下掉十几像素
+                    self.assertLessEqual(min(rows), 24 if name == 'nap' else 6)
                     feet = a.cols(128, SOLE_Y - 30, SOLE_Y)
                     self.assertGreater(len(feet), 20)                                    # 下面确实有腿/鞋
                     self.assertLessEqual(abs((min(feet) + max(feet)) / 2 - FOOT_X), 6)
@@ -122,7 +124,7 @@ class LegsArt(unittest.TestCase):
             for p in sorted((A / 'sprites_legs' / name).glob('*.webp')):
                 with self.subTest(frame=p.parent.name + '/' + p.name):
                     self.assertEqual(Alpha(p).bits() | m, m)                     # 帧里有像素的地方遮罩都有
-            self.assertLess(ma.fill(), 0.62)                                     # 不是整块矩形
+            self.assertLess(ma.fill(), 0.85 if name == 'stretch' else 0.62)      # 不是整块矩形（伸懒腰两臂张开，并集大些）
 
     def test_05_peek_padded_wall_side_kept(self):
         for p in sorted((A / 'peek_legs').glob('*.png')):

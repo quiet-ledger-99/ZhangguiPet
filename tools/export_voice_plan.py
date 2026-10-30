@@ -7,13 +7,18 @@ import os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pet_lines as PL
 
-TAG = {'smile': 'shy', 'smug': 'shy', 'thinking': 'curious', 'biz': 'excited', 'pout': 'reluctantly'}
+TAG = {'smile': 'shy', 'smug': 'shy', 'thinking': 'curious', 'biz': 'excited', 'pout': 'reluctantly',
+       'stretch': 'shy', 'yawn': 'reluctantly', 'nod': 'curious', 'nap': 'shy'}   # v0.3.11 四个动作
 INS = {
     'smile': '温柔、会照顾人的邻家大姐姐，声音柔和带笑意，语速适中偏慢，轻声细语，像在身边小声关心你。',
     'smug': '温柔的大姐姐，眯着眼笑，语气放松、软一点，尾音轻轻拖一下，安心感。',
     'thinking': '温柔的大姐姐，带一点关切和好奇，语速稍慢，像歪着头认真问你。',
     'biz': '元气一点的温柔大姐姐，明亮有精神但不吵，句尾微微上扬，给人打气。',
     'pout': '被逗得有点无奈的温柔大姐姐，轻轻鼓着腮小声抱怨，可爱不凶，带一点笑意。',
+    'stretch': '刚伸完懒腰的温柔大姐姐，舒展、放松，尾音带一点满足的叹气。',
+    'yawn': '深夜有点困的温柔大姐姐，声音放轻、慢一点，带一点哈欠后的鼻音。',
+    'nod': '认真听你说话的温柔大姐姐，短促、肯定、语气平稳。',
+    'nap': '迷迷糊糊快睡着的温柔大姐姐，声音很轻很慢，像在小声嘟囔。',
 }
 SKIP = {'murmur'}   # 只有气泡、不出声的类别
 

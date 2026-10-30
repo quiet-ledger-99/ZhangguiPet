@@ -49,6 +49,27 @@
    "n": 96,
    "type": "clip",
    "src": "v4_huff_f"
+  },
+  "stretch": {
+   "n": 120,
+   "type": "clip",
+   "src": "rework_20261030_legs"
+  },
+  "yawn": {
+   "n": 96,
+   "type": "clip",
+   "src": "rework_20261030_legs"
+  },
+  "nod": {
+   "n": 48,
+   "type": "loop",
+   "src": "rework_20261030_legs"
+  },
+  "nap": {
+   "n": 144,
+   "type": "loop",
+   "loop_from": 64,
+   "src": "rework_20261030_legs"
   }
  },
  "fx": {

@@ -35,7 +35,8 @@ A = ROOT / 'assets'
 LEGS = json.loads((A / 'sprites_legs/manifest.json').read_text(encoding='utf-8'))
 FLO = json.loads((A / 'sprites/manifest.json').read_text(encoding='utf-8'))
 N24 = {'idle': 144, 'smile': 144, 'smug': 144, 'thinking': 144,
-       'smug_hold': 48, 'thinking_hold': 48, 'wave': 96, 'huff': 96}
+       'smug_hold': 48, 'thinking_hold': 48, 'wave': 96, 'huff': 96,
+       'stretch': 120, 'yawn': 96, 'nod': 48, 'nap': 144}   # v0.3.11 P0 四动作
 
 
 class FakeLock:
@@ -60,7 +61,8 @@ class Art(unittest.TestCase):
         self.assertEqual({k: v['n'] for k, v in LEGS['anims'].items()}, N24)
         for name, spec in LEGS['anims'].items():
             with self.subTest(anim=name):
-                self.assertEqual(spec['n'], FLO['anims'][name]['n'] * 2)
+                k = round(LEGS['fps'] / FLO['anims'][name].get('fps', FLO['fps']))   # v0.3.11：飘着版新动作本身 24fps
+                self.assertEqual(spec['n'], FLO['anims'][name]['n'] * k)
                 files = sorted(p.name for p in (A / 'sprites_legs' / name).glob('*.webp'))
                 self.assertEqual(files, [f'{i:03d}.webp' for i in range(spec['n'])])
 
@@ -73,15 +75,15 @@ class Art(unittest.TestCase):
         self.assertIn("'huff': ('huff_f', 'clip')", tool)
 
     def test_04_version(self):
-        self.assertEqual(Z.VERSION, '0.3.10')
+        self.assertEqual(Z.VERSION, '0.3.11')
         ps = (ROOT / 'packaging/build_win.ps1').read_text(encoding='utf-8')
-        self.assertIn("[string]$Version = '0.3.10'", ps)
+        self.assertIn("[string]$Version = '0.3.11'", ps)
         self.assertIn('tests\\test_v039.py', ps)
         info = (ROOT / 'packaging/version_info.txt').read_text(encoding='utf-8')
-        self.assertEqual(info.count('(0, 3, 10, 0)'), 2)
+        self.assertEqual(info.count('(0, 3, 11, 0)'), 2)
         self.assertNotIn('0.3.9', info)
         for f in ('README.md', 'CHANGELOG.md', '说明.txt'):
-            self.assertIn('0.3.10', (ROOT / f).read_text(encoding='utf-8-sig'), f)
+            self.assertIn('0.3.11', (ROOT / f).read_text(encoding='utf-8-sig'), f)
 
 
 class Playback(unittest.TestCase):

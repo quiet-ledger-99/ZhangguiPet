@@ -3,7 +3,7 @@
 # 图标 build/ZhangguiPet.icns 由 build_mac.sh 从 assets/icon.png 现做（不进仓库）。
 import os
 ROOT = os.path.abspath(os.path.join(SPECPATH, '..'))
-VERSION = os.environ.get('ZGP_VERSION', '0.3.10')
+VERSION = os.environ.get('ZGP_VERSION', '0.3.11')
 ICNS = os.path.join(ROOT, 'build', 'ZhangguiPet.icns')
 
 a = Analysis(
@@ -11,7 +11,7 @@ a = Analysis(
     pathex=[ROOT],
     binaries=[],
     datas=[(os.path.join(ROOT, 'assets'), 'assets')],
-    hiddenimports=[],
+    hiddenimports=['pet_online'],   # v0.3.11：可选联网人格（ZHANGGUI_PET_ONLINE=1 才加载，默认关）
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

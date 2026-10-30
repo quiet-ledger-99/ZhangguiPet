@@ -4,7 +4,7 @@
 # Everything (build cache, temp files, output) stays inside the source folder, so nothing is written to C:.
 param(
     [Parameter(Mandatory = $true)][string]$Python,
-    [string]$Version = '0.3.10',
+    [string]$Version = '0.3.11',
     [switch]$RunTests
 )
 $ErrorActionPreference = 'Stop'
@@ -44,6 +44,10 @@ if ($RunTests) {
     if (Test-Path -LiteralPath 'tests\test_voice_pack.py') {
         & $Python tests\test_voice_pack.py
         if ($LASTEXITCODE) { throw 'voice pack unit tests failed' }
+    }
+    if (Test-Path -LiteralPath 'tests\test_v0311.py') {
+        & $Python tests\test_v0311.py
+        if ($LASTEXITCODE) { throw 'v0.3.11 unit tests failed' }
     }
     Remove-Item Env:QT_QPA_PLATFORM
 }

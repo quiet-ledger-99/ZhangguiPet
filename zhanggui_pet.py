@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""掌柜台桌宠 v0.3.10 —— 非官方粉丝二创，与阿里巴巴及通义千问无隶属或合作关系；含 AI 生成内容（详见 README「署名与授权」）。
+"""掌柜台桌宠 v0.3.11 —— 非官方粉丝二创，与阿里巴巴及通义千问无隶属或合作关系；含 AI 生成内容（详见 README「署名与授权」）。
 完全离线：不联网、不要任何 key、不监听键盘、不打开/移动/删除你的文件。
 依赖：PySide6（Essentials 即可）。运行：python zhanggui_pet.py
 台词在 pet_lines.py；系统相关（设置、全屏检测、空闲时间、自启、语音）在 pet_platform.py；
@@ -9,7 +9,7 @@
 feedback / wait 只读气泡按钮的点击，按 since 游标返回。任务卡走 pet_ctl card，确认只能在卡片上点。"""
 import os, sys, json, random, time, datetime, traceback, math, threading
 
-VERSION = '0.3.10'
+VERSION = '0.3.11'
 _BUILD_SIG = 0x13320F1D        # 构建签名（资源完整性）
 
 
@@ -99,6 +99,31 @@ from PySide6.QtWidgets import (QApplication, QWidget, QMenu, QSystemTrayIcon, QW
                                QHBoxLayout, QVBoxLayout, QPushButton, QSpinBox, QCheckBox, QRadioButton, QButtonGroup,
                                QScrollArea)
 
+class StickyMenu(QMenu):
+    """勾选型菜单项点完不收起。
+
+    Qt 默认点任何菜单项都关菜单，于是"总在最前/长脚/安静"这类开关每改一个都得重新点开。
+    这里只对 checkable 的项拦截：自己触发一次，但不把菜单关掉；普通项照旧。
+    """
+
+    def mouseReleaseEvent(self, event):
+        act = self.activeAction()
+        if act is not None and act.isCheckable() and act.isEnabled():
+            act.activate(QAction.Trigger)
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event):
+        act = self.activeAction()
+        if (event.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space)
+                and act is not None and act.isCheckable() and act.isEnabled()):
+            act.activate(QAction.Trigger)
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+
 import pet_lines as PL
 import pet_platform as P
 import pet_macos as MAC
@@ -170,11 +195,25 @@ EXPR = {
     #   pout -> huff 合扇抵下巴、一手叉腰的小嘴硬（原来也是递包的鼓腮）
     'biz':      dict(enter=('wave', 0, 48), hold=('wave', 0, 48), leave=None, max_hold=4.0),
     'pout':     dict(enter=('huff', 0, 48), hold=('huff', 0, 48), leave=None),
+    # v0.3.11 P0 四动作。帧号按 12fps 写，eseg 按每个动作自己的 fps 翻倍：飘着版和长脚版这四个都是 24fps
+    # （飘着版伸懒腰是 251×416 高画布，见 manifest anchor_offset_y）。nap 的呼吸循环起点见 manifest loop_from。
+    'stretch':  dict(enter=('stretch', 0, 60), hold=('stretch', 59, 60), leave=None, max_hold=0.8),
+    'yawn':     dict(enter=('yawn', 0, 48), hold=('yawn', 47, 48), leave=None, max_hold=0.8),
+    'nod':      dict(enter=('nod', 0, 24), hold=('nod', 0, 24), leave=None, max_hold=3.0),
+    'nap':      dict(enter=('nap', 0, 72), hold=('nap', 24, 72), leave=None),
 }
 MICRO = {'off': None, 'low': (240, 480), 'mid': (90, 200), 'high': (35, 80)}
 MICRO_NAMES = [('off', '关'), ('low', '偶尔（4～8 分钟）'), ('mid', '适中（1.5～3 分钟）'), ('high', '经常（半分钟～1 分多）')]
 # 同一秒有好几件事想说时的优先级（数字小的先说）
 PRIO_TIMER, PRIO_RETURN, PRIO_STAND, PRIO_WATER, PRIO_SLOT = 0, 1, 2, 3, 4
+PRIO_ACT = 6          # v0.3.11 伸懒腰/打哈欠：最低，排在外部 normal(5) 后面，不抢任何话
+ACT_NAP_SECS = float(ENV('ZHANGGUI_ACT_NAP_SECS', '600'))       # 多久没人理就打盹
+ACT_NAP_HOLD = float(ENV('ZHANGGUI_ACT_NAP_HOLD', '900'))       # 打盹最多持续多久
+ACT_STRETCH_GAP = float(ENV('ZHANGGUI_ACT_STRETCH_GAP', '5400'))  # 伸懒腰冷却 90 分钟
+ACT_STRETCH_WORK = float(ENV('ZHANGGUI_ACT_STRETCH_WORK', '5400'))  # 连续工作多久伸一次
+ACT_YAWN_GAP = float(ENV('ZHANGGUI_ACT_YAWN_GAP', '2400'))      # 打哈欠冷却 40 分钟
+ACT_YAWN_HOUR = int(ENV('ZHANGGUI_ACT_YAWN_HOUR', '23'))
+ACT_WARMUP = float(ENV('ZHANGGUI_ACT_WARMUP', '300'))            # 刚启动 5 分钟内不主动伸懒腰/打哈欠（别一开就抢话）
 # 外部播报只在「允许本机助手控制我」打开时才会进候选。important 介于计时和回来啦之间；
 # normal 比时段问候还低，不抢离线脑和你戳她的话。
 PRIO_EXT_IMPORTANT, PRIO_EXT_NORMAL = 0.5, 5
@@ -364,7 +403,7 @@ class Sprites:
         self.bytes = 0
         fb = self.sw * self.sh * 4
         idle_b = fb * self.n('idle')
-        k = getattr(self, 'fk', 1)
+        k = max([getattr(self, 'fk', 1)] + [self.akf(a) for a in self.man['anims']])   # v0.3.11：飘着版也有 24fps 的动作
         self.budget = idle_b + max(20 * 2**20 * k, 26 * k * fb)    # 待机全常驻 + 至少 26 帧（24fps 时 52 帧）给其他片段，停留循环不会反复解码
         self.masks = {}
         self.peek_cache = {}
@@ -376,6 +415,23 @@ class Sprites:
     def n(self, name):
         return self.man['anims'][name]['n']
 
+    # v0.3.11：单个动作可以有自己的 fps 和更高的画布（manifest 里 fps / anchor_offset_y）。
+    # 飘着版的四个新动作是 24fps；伸懒腰手举过头，画布 251×416 = 标准框上面多 36px，脚底对齐不动。
+    def ainfo(self, name):
+        return self.man['anims'].get(name, {})
+
+    def afps(self, name):
+        return float(self.ainfo(name).get('fps', self.fps))
+
+    def akf(self, name):
+        """EXPR 帧号（12fps 写的）-> 这个动作素材帧号的倍率。"""
+        return max(1, round(self.afps(name) / 12))
+
+    def top(self, name):
+        """这个动作的画布比标准框高出多少（已按当前大小缩放）；画在框上方，脚底不动。"""
+        oy = self.ainfo(name).get('anchor_offset_y', 0)
+        return max(0, round(oy * self.s)) if oy else 0
+
     def frame(self, name, i):
         k = (name, i)
         im = self.cache.get(k)
@@ -386,8 +442,10 @@ class Sprites:
         if im.isNull():
             raise RuntimeError(f'读不到精灵帧 {name}/{i:03d}.webp（缺少 Qt 的 webp 插件？）')
         im = im.convertToFormat(QImage.Format_ARGB32_Premultiplied)
+        top = self.top(name)
         if self.s != 1.0:
-            im = im.scaled(self.sw, self.sh, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+            # 高画布动作：宽度、比例和标准框完全一致，只是上面多 top 像素（等比缩放，不拉伸）
+            im = im.scaled(self.sw, self.sh + top, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
         self.cache[k] = im
         self.bytes += im.sizeInBytes()
         while self.bytes > self.budget and len(self.cache) > 1:
@@ -581,11 +639,12 @@ class Sprites:
         r = self.masks.get(name)
         if r is None:
             m = QImage(os.path.join(self.maskd, name + '.png'))
+            top = self.top(name)
             if m.isNull():
-                r = QRegion(0, 0, self.sw, self.sh)
+                r = QRegion(0, -top, self.sw, self.sh + top)
             else:
-                m = m.convertToFormat(QImage.Format_ARGB32).scaled(self.sw, self.sh, Qt.IgnoreAspectRatio, Qt.FastTransformation)
-                r = QRegion(QBitmap.fromImage(m.createAlphaMask()))
+                m = m.convertToFormat(QImage.Format_ARGB32).scaled(self.sw, self.sh + top, Qt.IgnoreAspectRatio, Qt.FastTransformation)
+                r = QRegion(QBitmap.fromImage(m.createAlphaMask())).translated(0, -top)
             self.masks[name] = r
         return r
 
@@ -955,6 +1014,13 @@ class Pet(QWidget):
         order = [x.strip() for x in ENV('ZHANGGUI_PET_ORDER', '').split(',') if x.strip()]
         self.brain = LocalBrain(order)
         self.voice = P.Voice(VOICED, conf, log)
+        # v0.4 联网人格 + TTS：默认关，ZHANGGUI_PET_ONLINE=1 才启用；失败自动退回内置台词
+        if os.environ.get('ZHANGGUI_PET_ONLINE', '') == '1':
+            try:
+                import pet_online
+                pet_online.install(self, order)
+            except Exception as _online_err:
+                self.log('online', 'disabled', str(_online_err)[:80])
         self.timer = PetTimer(st)
         self.panel = None
         self.sp = Sprites(st['legs'])
@@ -966,7 +1032,7 @@ class Pet(QWidget):
         self.hold_override = None
         self.prev = None; self.prev_anim = None; self.fade = None    # fade = (开始时间, 时长秒)
         self.settle_t0 = None; self.fast_pending = False
-        self.last_img = None; self.cur_img = None
+        self.last_img = None; self.cur_img = None; self.cur_top = 0
         self.bubble = None                  # (text, until)
         self.bubble_options = None          # 当前气泡上的按钮文字；没有就是 None
         self.fx_on = []                     # [(kind, t0, t1)]
@@ -1012,7 +1078,7 @@ class Pet(QWidget):
         self.apply_scale(s0, keep_anchor=False)
         # 计时器们
         self.anim_timer = QTimer(self); self.anim_timer.timeout.connect(self.tick)
-        self.anim_timer.start(int(1000 / self.sp.fps))
+        self.anim_timer.start(self.frame_ms())
         self.brain_timer = QTimer(self); self.brain_timer.timeout.connect(self.brain_tick); self.brain_timer.start(1000)
         self.press_timer = QTimer(self); self.press_timer.setSingleShot(True); self.press_timer.timeout.connect(self.start_longpat)
         self.peek_timer = QTimer(self); self.peek_timer.timeout.connect(self.peek_poll)
@@ -1104,14 +1170,14 @@ class Pet(QWidget):
         a, side = self.anchor(), self.peek
         self.cancel_interaction()
         self.leave_peek()
-        old_k = self.sp.fk
+        old_k = self.sp.akf(self.seg[0])
         self.sp.set_assets(legs)
-        if self.sp.fk != old_k:                        # v0.3.9：长脚 24fps / 飘着 12fps，切换时把当前片段帧号按比例换算，节拍也跟着换
-            r = self.sp.fk / old_k
+        if self.sp.akf(self.seg[0]) != old_k:          # v0.3.9：长脚 24fps / 飘着 12fps，切换时把当前片段帧号按比例换算，节拍也跟着换（v0.3.11 按动作算）
+            r = self.sp.akf(self.seg[0]) / old_k
             self.seg = (self.seg[0], int(self.seg[1] * r), int(self.seg[2] * r))
             self.idx = int(self.idx * r)
             if self.anim_timer.isActive():
-                self.anim_timer.setInterval(250 if self.away else int(1000 / self.sp.fps))
+                self.anim_timer.setInterval(self.frame_ms())
         self.st['legs'] = legs
         # 大小不变：立绘按同一比例显示，脚底中心钉住原位——出腿时整个人往上长出腿，收腿时落回原来的位置，不会忽大忽小。
         self.apply_scale(self.sp.s, keep_anchor=False)
@@ -1331,7 +1397,7 @@ class Pet(QWidget):
             else:
                 self.ensure_visible()
             self.mask_key = None; self.last_chrome = None; self.bubble_cache = None
-            self.show(); self.anim_timer.start(250 if self.away else int(1000 / self.sp.fps))
+            self.show(); self.anim_timer.start(self.frame_ms())
             self.compose()
             self.log('shown')
         elif not vis and self.isVisible():
@@ -1439,7 +1505,7 @@ class Pet(QWidget):
     # ---------- 播放 ----------
     def eseg(self, seg):
         """EXPR 里的 12fps 帧号 -> 当前素材帧号（长脚 24fps 时 ×2）。"""
-        k = self.sp.fk
+        k = self.sp.akf(seg[0])
         return seg if k == 1 else (seg[0], seg[1] * k, seg[2] * k)
 
     def start_seg(self, mode, seg):
@@ -1454,6 +1520,23 @@ class Pet(QWidget):
                 self.settle_t0 = now          # 换表情/换姿势：轻轻“落定”一下，让切换读起来像动作
         self.mode, self.seg = mode, seg
         self.anim, self.idx, self.dir = seg[0], seg[1], 1
+        if mode == 'hold':
+            info = self.sp.man['anims'].get(seg[0], {})
+            if info.get('type') == 'loop' and 'loop_from' in info:
+                # v0.3.11：打盹 enter 播到睡着的末帧，hold 直接从呼吸循环起点接（末帧→loop_from 是素材本身的循环缝）
+                self.idx = max(seg[1], min(int(info['loop_from']), seg[2] - 1))
+        # v0.3.11：24fps 的动作播放时节拍跟着变快，回到 12fps 待机再变回来
+        t = getattr(self, 'anim_timer', None)
+        if t is not None and t.isActive():
+            ms = self.frame_ms()
+            if t.interval() != ms:
+                t.setInterval(ms)
+
+    def frame_ms(self):
+        """动画节拍：人不在时 250ms 省电；否则按当前动作自己的 fps。"""
+        if getattr(self, 'away', False):
+            return 250
+        return max(1, int(1000 / self.sp.afps(self.anim)))
 
     def play_expr(self, expr, hold=None):
         self.expr = expr
@@ -1473,15 +1556,24 @@ class Pet(QWidget):
         b = min(b, self.sp.n(anim))
         if self.mode == 'hold':
             if a + 1 < b:
-                nxt = self.idx + self.dir
-                if nxt >= b or nxt < a:
-                    self.dir = -self.dir; nxt = self.idx + self.dir
-                self.idx = nxt
+                # 2026-10-30：manifest 标成 loop 的片段（打盹的呼吸、点头）要正向循环；
+                # 其他（smile_hold 这类）保持原来的来回摆，别把呼吸播成倒放。
+                info = self.sp.man['anims'].get(anim, {})
+                if info.get('type') == 'loop':
+                    # 长脚版 nap 的呼吸从第 64 帧起（manifest.loop_from）；飘着版没有就沿用 EXPR 的 a
+                    start = max(a, int(info.get('loop_from', a)))
+                    nxt = self.idx + (self.sp.akf(anim) if self.away else 1)   # 人不在：和待机一样慢放
+                    self.idx = start if nxt >= b else nxt
+                else:
+                    nxt = self.idx + self.dir
+                    if nxt >= b or nxt < a:
+                        self.dir = -self.dir; nxt = self.idx + self.dir
+                    self.idx = nxt
             if now >= self.hold_until and not self.patting:
                 lv = EXPR[self.expr]['leave']
                 self.start_seg('leave', self.eseg(lv)) if lv else self.go_idle()
         else:
-            self.idx += self.sp.fk if (self.away and self.mode == 'idle') else 1   # 离开省电模式 250ms 一拍，24fps 素材一次走 2 帧，速度和以前一样
+            self.idx += self.sp.akf(anim) if (self.away and self.mode == 'idle') else 1   # 离开省电模式 250ms 一拍，24fps 素材一次走 2 帧，速度和以前一样
             if self.idx >= b:
                 if self.mode == 'idle':
                     self.idx = a
@@ -1548,6 +1640,7 @@ class Pet(QWidget):
             else:
                 cur, masks = self.compose_peek()
             self.peek_drawn = (self.peek_key(), self.peek_fade is not None)
+            self.cur_top = 0
             self.last_img = cur
             self.cur_img = cur
             self.update_mask(masks)
@@ -1588,10 +1681,12 @@ class Pet(QWidget):
             QTimer.singleShot(FAST_MS, self._fast_compose)
         self.last_img = cur
         self.cur_img = cur
+        # v0.3.11：高画布动作（伸懒腰）比标准框高出的部分，画在框上方
+        self.cur_top = max(0, cur.height() - sp.sh) if cur.width() == sp.sw else 0
         self.update_mask(masks)
         # 只有角色在动时，只重画角色那块；气泡/特效/摆动变化时才整窗重画（省 CPU）
         chrome = (self.bubble, self.bubble_rect().getRect() if self.bubble else None, self.badge_text, self.pos().toTuple() if self.peek else None,
-                  bool(self.fx_on), bool(self.hearts), self.angle != 0.0)
+                  bool(self.fx_on), bool(self.hearts), self.angle != 0.0, self.cur_top)
         if chrome == self.last_chrome and not chrome[4] and not chrome[5] and not chrome[6]:
             self.update(self.sprite_local())
         else:
@@ -1634,7 +1729,8 @@ class Pet(QWidget):
 
     # ---------- 绘制 ----------
     def sprite_local(self):
-        return QRect(self.ox, self.oy, self.sp.sw, self.sp.sh)
+        top = getattr(self, 'cur_top', 0)
+        return QRect(self.ox, self.oy - top, self.sp.sw, self.sp.sh + top)
 
     def draw_sprite(self, p):
         """立绘画进逻辑框 sw×sh。1x 图走原来的逐像素覆盖；高清图铺进同一个框，贴边不跟着变大。"""
@@ -1642,8 +1738,8 @@ class Pet(QWidget):
         if img is None:
             return
         sw, sh = self.sp.sw, self.sp.sh
-        if img.width() == sw and img.height() == sh:
-            p.drawImage(self.ox, self.oy, img)
+        if img.width() == sw and img.height() >= sh:      # v0.3.11：高画布动作底边对齐脚底，多出来的往上画（不缩放不拉伸）
+            p.drawImage(self.ox, self.oy - (img.height() - sh), img)
             return
         target = QRectF(self.ox, self.oy, sw, sh)
         dev = p.device()
@@ -1660,7 +1756,7 @@ class Pet(QWidget):
 
     def bubble_rect(self):
         opts = self.bubble_options or ()
-        k = (self.bubble[0], opts, self.x(), self.y(), self.W, self.font.pixelSize(), self.peek, self.sp.sw)
+        k = (self.bubble[0], opts, self.x(), self.y(), self.W, self.font.pixelSize(), self.peek, self.sp.sw, getattr(self, 'cur_top', 0))
         if self.bubble_cache and self.bubble_cache[0] == k:
             return QRect(self.bubble_cache[1])
         r = self._bubble_rect()
@@ -1689,6 +1785,7 @@ class Pet(QWidget):
             w = min(maxw, max(w, opt_w))
         h = br.height() + 22 + extra
         x = (self.W - w) // 2; y = BUBBLE_H - h - 4
+        y -= min(getattr(self, 'cur_top', 0), max(0, y))     # v0.3.11：伸懒腰手举高时气泡往上让一让（最多让到窗口顶）
         if self.peek and self.peek_art_ok():
             if self.peek in PEEK_TB:                        # 上/下边：气泡在她和屏幕中间那一侧，横向对着她
                 c = self.sp.peek_mask(self.peek_key()[1], self.peek).boundingRect().translated(self.ox, self.oy)
@@ -1919,7 +2016,10 @@ class Pet(QWidget):
                 now = time.time()
                 self.fx_on += [('puff', now + 0.5, now + 3.0), ('sweat', now + 0.5, now + 3.0)]
         if voice and not self.st['muted'] and not self.quiet() and not self.fs_hidden:
-            self.voice.play(line.id, self.st['volume'])
+            if hasattr(self.voice, 'speak'):          # 联网人格的新台词没有预录音频，交给 TTS
+                self.voice.speak(line, self.st['volume'], proactive=proactive)
+            else:
+                self.voice.play(line.id, self.st['volume'])
         self.log('say', cat, line.id)
         return line
 
@@ -1996,6 +2096,21 @@ class Pet(QWidget):
             np_.setY(max(g.top() - self.oy - int(sh * 0.3), min(np_.y(), g.bottom() - self.oy - int(sh * 0.35))))
             self.move(np_)
 
+    def mouseDoubleClickEvent(self, e):
+        # 双击她 = 打开打字输入框（不需要任何系统权限；热键失效时的稳妥入口）
+        if e.button() == Qt.LeftButton and os.environ.get('ZHANGGUI_PET_ONLINE', '') == '1':
+            self.press_pos = None
+            self.dragging = False
+            self.press_timer.stop()
+            try:
+                __import__('pet_online').open_chat(self)
+            except Exception as error:
+                self.log('chat', 'open failed', str(error)[:60])
+            self.log('chat', 'open by double-click')
+            e.accept()
+            return
+        super().mouseDoubleClickEvent(e)
+
     def mouseReleaseEvent(self, e):
         if e.button() != Qt.LeftButton or self.press_pos is None:   # 没有对应的按下（已经被取消了）：不当成点击
             return
@@ -2025,6 +2140,8 @@ class Pet(QWidget):
             self.hold_until = self.last_touch + (HOLD_SECS if mh is None else min(HOLD_SECS, mh))
 
     def on_click(self, zone):
+        if self.wake_from_nap():
+            return
         self.touch()
         now = time.time()
         if self.dozing:
@@ -2115,7 +2232,7 @@ class Pet(QWidget):
 
     # ---------- 菜单（托盘和右键共用） ----------
     def contextMenuEvent(self, e):
-        m = QMenu()
+        m = StickyMenu()
         self.fill_menu(m)
         m.exec(e.globalPos())
 
@@ -2131,6 +2248,8 @@ class Pet(QWidget):
             menu.addAction(a)
             return a
         act(f'掌柜台桌宠 v{VERSION}（非官方粉丝二创 · 含AI生成内容）', enabled=False)
+        if os.environ.get('ZHANGGUI_PET_ONLINE', '') == '1':
+            act('和她说话…（打字）', lambda: __import__('pet_online').open_chat(self))
         m.addSeparator()
         act('显示她' if (self.user_hidden or not self.isVisible()) else ('先藏起来' if self.tray_ok else '躲到屏幕边上'), self.toggle_hidden)
         act('总在最前', lambda on: self.set_on_top(on), checked=st['on_top'])
@@ -2166,6 +2285,12 @@ class Pet(QWidget):
         sm.addSeparator()
         for v in (50, 75, 100, 125, 150):
             act(f'{v}%', lambda _=False, v=v: self.set_scale(v / 100), menu=sm)
+        # v0.3.11 新动作的手动试播入口（放在大小后面，不挤第一屏的安静时长）（自动触发见 new_action_tick）
+        pm = m.addMenu('动作试播')
+        act('伸懒腰 stretch', lambda: self.play_expr('stretch'), menu=pm)
+        act('打哈欠 yawn', lambda: self.play_expr('yawn'), menu=pm)
+        act('点头 nod', lambda: self.play_expr('nod'), menu=pm)
+        act('打盹 nap（10 分钟）', lambda: self.play_expr('nap', hold=600), menu=pm)
         self.voice.scan()
         vm = m.addMenu('声音')
         act('静音', lambda on: self.set_opt('muted', on), checked=st['muted'], menu=vm)
@@ -2399,7 +2524,7 @@ class Pet(QWidget):
             return
         self.tray = QSystemTrayIcon(self.tray_icon, self)
         self.tray.setToolTip(f'掌柜台桌宠 v{VERSION}\n{CREDIT}\n' + ('点一下：打开菜单' if P.IS_MAC else '单击：显示/藏起来　右键：设置'))
-        self.tray_menu = QMenu()
+        self.tray_menu = StickyMenu()
         self.tray_menu.aboutToShow.connect(lambda: self.fill_menu(self.tray_menu))
         self.fill_menu(self.tray_menu)
         if not P.IS_MAC:
@@ -2494,7 +2619,7 @@ class Pet(QWidget):
                 self.log('away')
             elif self.away and idle < 3:
                 self.away = False
-                self.anim_timer.setInterval(int(1000 / self.sp.fps))
+                self.anim_timer.setInterval(self.frame_ms())
                 dur = now - self.away_start
                 self.session_start = now
                 self.last_stand = now
@@ -2530,6 +2655,7 @@ class Pet(QWidget):
             elif calm or pe[0] == PRIO_TIMER:
                 cands.append(dict(prio=pe[0], cat=pe[1], proactive=pe[2], oneshot=True, pending=True,
                                   commit=(lambda c=pe[1]: self.timer_notice(c)) if pe[0] == PRIO_TIMER else None))
+        self.new_action_tick(now, active, calm, cands)       # v0.3.11：伸懒腰 / 打哈欠 / 打盹
         if self.st.get('control_enabled'):
             self._control_offer(cands, now, calm)
         self.run_candidates(cands, now)
@@ -2558,6 +2684,63 @@ class Pet(QWidget):
                     l = self.brain_strict('murmur')
                     if l: self.show_bubble(l.text)
                 self.log('micro', ex)
+
+    # ---------- 新动作：伸懒腰 / 打哈欠 / 打盹（2026-10-30 接 GrokBot P0 素材） ----------
+    def new_action_tick(self, now, active, calm, cands):
+        acts = getattr(self, 'act_at', None)
+        if acts is None:
+            self.act_at = acts = {}
+        # 安静时段 / 全屏 / 被藏起来：这些动作一个都不许触发
+        if self.quiet() or self.fs_hidden or self.user_hidden or self.press_pos is not None:
+            return
+        h = PL.hour_f()
+
+        # 打盹：没人理了就站着眯一会儿（离开状态也允许）；碰一下醒
+        if getattr(self, 'napping', False) and self.expr != 'nap':
+            self.napping = False               # 打盹自己结束了（到时长 / 被别的表情顶掉）
+        if not getattr(self, 'napping', False):
+            idle = P.idle_seconds()
+            if idle is not None and idle >= ACT_NAP_SECS and calm and not self.dozing:
+                self.napping = True
+                self.act_at['nap'] = now
+                self.say('nap', proactive=True)       # 主动的：安静模式下不说、不出声
+                self.play_expr('nap', hold=ACT_NAP_HOLD)
+                self.log('action', 'nap', int(idle), 's idle')
+
+        if not active or now - self.t_start < ACT_WARMUP:
+            return
+
+        # 伸懒腰：早上第一次 / 连续工作够久
+        if now - acts.get('stretch', 0) > ACT_STRETCH_GAP:
+            worked = now - self.session_start
+            morning_first = (5 <= h < 11) and acts.get('stretch_morning_day') != datetime.date.today().isoformat()
+            if worked >= ACT_STRETCH_WORK or morning_first:
+                cands.append(dict(prio=PRIO_ACT, cat='stretch', proactive=True, oneshot=False,
+                                  commit=lambda: self._acted('stretch', h)))
+
+        # 打哈欠：深夜 / 熬夜
+        if (h >= ACT_YAWN_HOUR or h < 5) and now - acts.get('yawn', 0) > ACT_YAWN_GAP:
+            cands.append(dict(prio=PRIO_ACT, cat='yawn', proactive=True, oneshot=False,
+                              commit=lambda: self._acted('yawn', h)))
+
+    def _acted(self, name, hour):
+        self.act_at[name] = time.time()
+        if name == 'stretch' and 5 <= hour < 11:
+            self.act_at['stretch_morning_day'] = datetime.date.today().isoformat()
+        self.log('action', name)
+
+    def wake_from_nap(self):
+        """被碰醒：从打盹直接接伸懒腰的前半段当"起来"。"""
+        if not getattr(self, 'napping', False):
+            return False
+        self.napping = False
+        if self.expr != 'nap':                 # 打盹已经自己结束（或被别的表情顶掉）：这一下就是普通的点击
+            return False
+        self.act_at['stretch'] = time.time()
+        if self.say('stretch') is None:        # 安静 / 台词冷却说不出口：也要起来伸个懒腰，不能一直睡着
+            self.play_expr('stretch')
+        self.log('action', 'wake_stretch')
+        return True
 
     def run_candidates(self, cands, now=None):
         """同一秒的主动事件：按优先级只展示一条；没轮上的一次性事件留一个待补（优先级最高的那个）。

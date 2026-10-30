@@ -279,12 +279,41 @@ def context_categories(now=None):
     if slot: out[slot] = 2.0
     return out
 
+# ---- v0.3.11 P0 四动作台词（伸懒腰 / 打哈欠 / 点头 / 打盹；表情名就是动作名） ----
+ACTION_EXPRS = ('stretch', 'yawn', 'nod', 'nap')
+LINES.setdefault('stretch', []).extend([
+    L('stretch01', '唔……伸个懒腰，骨头都响了一下。', 'stretch', 1, 180),
+    L('stretch02', '坐太久了吧？我也起来动动。', 'stretch', 1, 180),
+    L('stretch03', '早上好呀，今天也一起加油。', 'stretch', 1, 180),
+    L('stretch04', '肩膀酸不酸？我陪你松一松。', 'stretch', 1, 180),
+    L('stretch05', '这一觉睡的，头发都翘起来了。', 'stretch', 1, 180),
+])
+# 深夜打哈欠：单独一个 yawn 类别（桌宠的 new_action_tick 按这个类别找词）；id 沿用 night11～14，和语音文件名对得上
+LINES.setdefault('yawn', []).extend([
+    L('night11', '夜深了，我有点困了……', 'yawn', 1, 180),
+    L('night12', '你还不睡？我先打个哈欠给你看。', 'yawn', 1, 180),
+    L('night13', '再写十分钟就休息，说好了哦。', 'yawn', 1, 180),
+    L('night14', '灯关小一点吧，眼睛会累。', 'yawn', 1, 180),
+])
+LINES.setdefault('ack', []).extend([
+    L('ack01', '嗯，我听着呢。', 'nod', 1, 180),
+    L('ack02', '好，记下了。', 'nod', 1, 180),
+    L('ack03', '这个我知道。', 'nod', 1, 180),
+    L('ack04', '等一下，让我想想。', 'nod', 1, 180),
+])
+LINES.setdefault('nap', []).extend([
+    L('nap01', '我趴一会儿……有事叫我。', 'nap', 1, 180),
+    L('nap02', '就眯五分钟，真的。', 'nap', 1, 180),
+    L('nap03', '你也歇一下嘛，我在这儿。', 'nap', 1, 180),
+    L('nap04', '毯子……哦不对，是外套。', 'nap', 1, 180),
+])
+
 
 def check():
     ids = [l.id for _, l in all_lines()]
     dup = {i for i in ids if ids.count(i) > 1}
     assert not dup, dup
-    bad = [l for _, l in all_lines() if l.expr not in ('smile', 'smug', 'thinking', 'biz', 'pout')]
+    bad = [l for _, l in all_lines() if l.expr not in ('smile', 'smug', 'thinking', 'biz', 'pout') + ACTION_EXPRS]
     assert not bad, bad
     banned = ['本小姐', '大发慈悲', '老板']
     for _, l in all_lines():

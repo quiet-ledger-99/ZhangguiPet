@@ -201,7 +201,7 @@ def events_named(path, name):
 
 class T0_Rules(unittest.TestCase):
     def test_no_confirm_command_and_categories(self):
-        self.assertEqual(Z.VERSION, '0.3.10')
+        self.assertEqual(Z.VERSION, '0.3.11')
         self.assertFalse(P.DEFAULTS['control_enabled'])
         self.assertFalse(P.DEFAULTS['show_control_menu'])
         self.assertNotIn('confirm', C.ACTIONS)
