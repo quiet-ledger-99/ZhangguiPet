@@ -73,7 +73,21 @@
 - **现在还没有语音包。** Day 0 的声音是阿里云百炼的云端 TTS 音色 `longxing_v3.1`（合成参数见 `voice_plan_pet.json`），要用你电脑上的 key 合成，这台测试机没法离线复现，也不想拿别的声音凑数。
 - 生成办法：`voice_plan_pet.json` 已经导出好了（128 句，约 1545 字，格式和 Day 0 的配音计划一样，带情绪标签和语气说明）。在你电脑上用 Day 0 那套合成脚本跑一遍，再执行 `python tools/import_voice.py <合成结果文件夹>`，会转成 24kHz 单声道 wav，裁掉首尾静音，统一响度，放进 `assets/voice/`。改了台词就重新跑 `python tools/export_voice_plan.py`。
 
-## 给 v0.4 留的接口（可选联网聊天 / TTS，默认关）
+## 可选：联网人格 + TTS（`pet_online.py`，默认关）
+v0.3.11 起代码里带了 `pet_online.py`，**只有设置环境变量 `ZHANGGUI_PET_ONLINE=1` 才加载**；不设就和以前一样完全离线，四个新动作也是纯本地素材，不依赖它。
+- 发声：自备的 TTS 脚本（`ZHANGGUI_QWEN_PY` / `ZHANGGUI_QWEN_TTS` 指定），找不到就只出气泡。Windows 用 `winsound` 播放，macOS 用 `afplay`。
+- 不写死任何个人路径，不读 key，不装开机自启。服务不在时开关开着也照常跑。
+- 协作说明：这是一次 Grok Bot / DSH / ChatGPT 一起做的尝试。真实的跨助手派活默认关；ChatGPT 没有 DSH 那样的常驻监听。
+
+### 实验：协同三路（默认关，未进发布包）
+
+开着联网人格的时候，可以直接对她说“让 Codex 帮我写一句早安问候”。她会判断这句话是**闲聊**还是**派活**：闲聊照旧由人格服务回答；派活交给本机协调服务，由协调员按白名单转给你自己配好的助手（例如 Codex、Grok Bot、DeepSeek 类协调员），对方的回复再显示在气泡里。意思不清楚时，她会先问一句再转交。
+
+> ⚠️ **这是实验代码，没有每条路径都手测过，可能有 bug。** Windows 没覆盖；常驻 / 开机自启没做完；真正派活需要你自己在本机跑各后端的监听程序，这些不在发布 zip 里。没有监听程序时，她只会告诉你没交出去，不会出别的问题。
+
+规则在 `pet_intent.py`，可以 `echo "让 codex 写首诗" | python pet_intent.py` 离线看分类结果。白名单示例见 `coordination-dispatch.example.json`。
+
+### 原来给 v0.4 留的接口
 本体只通过 `pet_brain.py` 要台词：`brain.line(类别)` 必须同步返回、不能卡界面；`brain.chat(文字, 上下文, 回调)` 在 v0.3 里固定返回 False。
 v0.4 计划新建 `pet_online.py`，只有在设置里填了 key 并打开开关时才加载：
 - `OnlineBrain` 继承 `LocalBrain`：在后台线程请求用户自己填的聊天 API，15 秒超时，让模型返回 `{"text", "expr"}` 来配表情；出错或超时就退回离线台词。
