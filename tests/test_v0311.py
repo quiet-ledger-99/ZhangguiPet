@@ -89,18 +89,24 @@ class Art(unittest.TestCase):
 
     def test_04_first_last_match_idle(self):
         """首尾对齐：除 nap 末帧（睡着）外，首末帧和待机第 0 帧一致（tall stretch 比较下面 380 行）。"""
-        import numpy as np
-        from PIL import Image
+        from PIL import Image                                    # 只用 Pillow，不依赖 numpy（Windows 打包 venv 没装）
+
+        def premul(path, h=None):
+            im = Image.open(path).convert('RGBA')
+            if h is not None:
+                im = im.crop((0, im.height - h, im.width, im.height))
+            px = im.tobytes()
+            return [px[k + c] * px[k + 3] / 255.0 for k in range(0, len(px), 4) for c in range(3)], im.size
+
         for spr in ('sprites', 'sprites_legs'):
-            idle0 = np.asarray(Image.open(A / spr / 'idle' / '000.webp').convert('RGBA')).astype(float)
+            idle0, isz = premul(A / spr / 'idle' / '000.webp')
             for n in NEW:
                 last = N[n] - 1
                 for i in ((0,) if n == 'nap' else (0, last)):
                     with self.subTest(spr=spr, anim=n, frame=i):
-                        im = np.asarray(Image.open(A / spr / n / f'{i:03d}.webp').convert('RGBA')).astype(float)
-                        im = im[im.shape[0] - idle0.shape[0]:]
-                        a = im[..., 3:] / 255.0; b = idle0[..., 3:] / 255.0
-                        d = np.abs(im[..., :3] * a - idle0[..., :3] * b).mean()
+                        im, sz = premul(A / spr / n / f'{i:03d}.webp', isz[1])
+                        self.assertEqual(sz, isz)
+                        d = sum(abs(x - y) for x, y in zip(im, idle0)) / len(idle0)
                         self.assertLess(d, 3.0)
 
     def test_05_lines(self):
