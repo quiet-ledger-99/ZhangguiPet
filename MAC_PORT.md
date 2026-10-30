@@ -1,4 +1,4 @@
-# 掌柜台桌宠 · macOS 移植说明（v0.3.10）
+# 掌柜台桌宠 · macOS 移植说明（v0.3.11）
 
 目标：同一份源码在 Windows 上行为**完全不变**，在 macOS（Apple Silicon，已在 macOS 27 / Mac mini 上跑过）上能正常显示、托盘（菜单栏）、隐藏/探头、单实例、登录自启。
 Windows 打包文件（`packaging/build_win.ps1`、`zhanggui_pet.spec`、`version_info.txt`）一个字没改。

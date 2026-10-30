@@ -58,10 +58,11 @@ class Assets(unittest.TestCase):
         self.assertEqual(man['fps'], 24.0)          # v0.3.9：长脚 24fps
         self.assertEqual(old['fps'], 12.0)          # 飘着模式不变
         self.assertEqual(set(man['anims']), set(old['anims']))
-        self.assertEqual(len(man['anims']), 8)
+        self.assertEqual(len(man['anims']), 12)      # v0.3.11：+ stretch/yawn/nod/nap
         for name, spec in man['anims'].items():
             with self.subTest(anim=name):
-                self.assertEqual((spec['n'], spec['type']), (old['anims'][name]['n'] * 2, old['anims'][name]['type']))
+                k = round(man['fps'] / old['anims'][name].get('fps', old['fps']))   # v0.3.11：飘着版新动作本身就是 24fps
+                self.assertEqual((spec['n'], spec['type']), (old['anims'][name]['n'] * k, old['anims'][name]['type']))
                 paths = sorted((A / 'sprites_legs' / name).glob('*.webp'))
                 self.assertEqual([p.name for p in paths], [f'{i:03d}.webp' for i in range(spec['n'])])
                 for p in paths:
@@ -70,7 +71,7 @@ class Assets(unittest.TestCase):
                     self.assertEqual((im.width(), im.height()), (375, 614), str(p))
                 mask = QImage(str(A / 'masks_legs' / (name + '.png')))
                 self.assertEqual((mask.width(), mask.height()), (375, 614))
-        self.assertEqual(len(list((A / 'masks_legs').glob('*.png'))), 8)
+        self.assertEqual(len(list((A / 'masks_legs').glob('*.png'))), 12)
         for name, fx in man['fx'].items():
             self.assertEqual(fx['img'], old['fx'][name]['img'])
             self.assertAlmostEqual(fx['at'][0], old['fx'][name]['at'][0] + man['upper_x'])
@@ -301,11 +302,11 @@ class PetModes(unittest.TestCase):
         self.assertEqual(pet.hearts_rect(), hearts)
 
     def test_09_version(self):
-        self.assertEqual(Z.VERSION, '0.3.10')
+        self.assertEqual(Z.VERSION, '0.3.11')
         for path in ('README.md', 'CHANGELOG.md', '说明.txt', 'packaging/version_info.txt'):
-            self.assertIn('0.3.10', (ROOT / path).read_text(encoding='utf-8-sig'))
+            self.assertIn('0.3.11', (ROOT / path).read_text(encoding='utf-8-sig'))
         info = (ROOT / 'packaging/version_info.txt').read_text(encoding='utf-8')
-        self.assertEqual(info.count('(0, 3, 10, 0)'), 2)
+        self.assertEqual(info.count('(0, 3, 11, 0)'), 2)
         self.assertNotIn('0.3.9', info)
 
     def test_cache_and_pending_slider_switch(self):

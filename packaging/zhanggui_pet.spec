@@ -11,7 +11,7 @@ a = Analysis(
     pathex=[ROOT],
     binaries=[],
     datas=[(os.path.join(ROOT, 'assets'), 'assets')],
-    hiddenimports=[],
+    hiddenimports=['pet_online'],   # v0.3.11：可选联网人格（ZHANGGUI_PET_ONLINE=1 才加载，默认关）
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

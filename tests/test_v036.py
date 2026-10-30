@@ -112,7 +112,7 @@ class T1_Assets(unittest.TestCase):
             self.assertEqual(len(fs), d['n'], name)
             self.assertTrue(os.path.exists(os.path.join(A, 'masks', name + '.png')), name)
             im = QImage(os.path.join(A, 'sprites', name, fs[0]))
-            self.assertEqual((im.width(), im.height()), (man['w'], man['h']), name)
+            self.assertEqual((im.width(), im.height()), (d.get('w', man['w']), d.get('h', man['h'])), name)   # v0.3.11：stretch 是 251x416 高画布
         for e in Z.EXPR.values():
             for k in ('enter', 'hold', 'leave'):
                 seg = e.get(k)
@@ -529,11 +529,11 @@ class T4_Expr(unittest.TestCase):
 
 class T5_Version(unittest.TestCase):
     def test_version(self):
-        self.assertEqual(Z.VERSION, '0.3.10')
+        self.assertEqual(Z.VERSION, '0.3.11')
         for f in ('README.md', 'CHANGELOG.md', '说明.txt'):
-            self.assertIn('0.3.10', open(os.path.join(ROOT, f), encoding='utf-8-sig').read(), f)
+            self.assertIn('0.3.11', open(os.path.join(ROOT, f), encoding='utf-8-sig').read(), f)
         info = open(os.path.join(ROOT, 'packaging', 'version_info.txt'), encoding='utf-8').read()
-        self.assertIn('0.3.10', info)
+        self.assertIn('0.3.11', info)
         self.assertNotIn('0.3.9', info)
 
     def test_no_bad_strings(self):

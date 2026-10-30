@@ -42,6 +42,34 @@
    "n": 48,
    "type": "clip",
    "src": "v6_hips"
+  },
+  "stretch": {
+   "n": 120,
+   "type": "clip",
+   "fps": 24,
+   "w": 251,
+   "h": 416,
+   "anchor_offset_y": 36,
+   "src": "p0_24fps_rework_20261030_tall"
+  },
+  "yawn": {
+   "n": 96,
+   "type": "clip",
+   "fps": 24,
+   "src": "p0_24fps_rework_20261030"
+  },
+  "nod": {
+   "n": 48,
+   "type": "loop",
+   "fps": 24,
+   "src": "p0_24fps_rework_20261030"
+  },
+  "nap": {
+   "n": 144,
+   "type": "loop",
+   "fps": 24,
+   "loop_from": 48,
+   "src": "p0_24fps_rework_20261030"
   }
  },
  "fx": {
@@ -59,5 +87,6 @@
     104.8
    ]
   }
- }
+ },
+ "note_v0311": "v0.3.11：stretch/yawn/nod/nap 是 24fps 素材（单动画 fps 覆盖全局 12；EXPR 帧号按 12fps 写、运行时乘 akf=2）。stretch 是 251x416 高画布，头顶多 36px，按 anchor_offset_y=36 往上画，脚/身体位置与 idle 对齐。帧已做消跳+首尾对齐 idle；nap 末帧=睡着（不回 idle），48 起为呼吸循环。"
 }
