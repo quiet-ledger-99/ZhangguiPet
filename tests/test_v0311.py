@@ -240,7 +240,8 @@ class Playback(unittest.TestCase):
         labels = [a.text() for a in m.actions()]
         self.assertIn('动作试播', labels)
         self.assertFalse(any('和她说话' in t for t in labels))
-        sub = next(a.menu() for a in m.actions() if a.text() == '动作试播')
+        act = next(a for a in m.actions() if a.text() == '动作试播')   # 先留住 QAction：PySide6 6.10 对临时 QAction 取 .menu() 会连子菜单一起释放
+        sub = act.menu()
         self.assertEqual(len(sub.actions()), 4)
 
     def test_07_no_auto_action_right_after_start(self):

@@ -254,7 +254,8 @@ class Menu(unittest.TestCase):
         self.assertLess(quiet, 4)
         self.assertFalse(any(t.startswith('安静一小时') for t in labels))
         self.assertFalse(any(t.startswith('结束安静') for t in labels))
-        sub = find_action(menu, '安静一段时间').menu()
+        qa = find_action(menu, '安静一段时间')                     # 留住 QAction（PySide6 6.10 临时 QAction 的 .menu() 会被连带释放）
+        sub = qa.menu()
         sub_labels = top_labels(sub)
         self.assertEqual(sub_labels[0], '（不主动说话、不出声）')
         self.assertEqual([m for m, _label in Z.QUIET_PRESETS], [15, 30, 60])
@@ -273,7 +274,8 @@ class Menu(unittest.TestCase):
         self.assertLess(labels.index('安静一段时间'), labels.index('飘着 / 长脚'))
         self.assertLess(labels.index(text), 4)
         self.assertFalse(any('安静一小时' in t for t in labels))
-        sub = find_action(menu, '安静一段时间').menu()
+        qa = find_action(menu, '安静一段时间')                     # 留住 QAction（PySide6 6.10 临时 QAction 的 .menu() 会被连带释放）
+        sub = qa.menu()
         self.assertEqual(top_labels(sub)[0], '（选一个新的时长会覆盖现在这段）')
         self.assertIn('15 分钟', top_labels(sub))
 
@@ -378,7 +380,8 @@ class Menu(unittest.TestCase):
         pet = self.pet()
         menu = QMenu(pet)
         pet.fill_menu(menu)
-        sound = next(a for a in menu.actions() if a.text() == '声音').menu()
+        sa = next(a for a in menu.actions() if a.text() == '声音')   # 同上，留住 QAction
+        sound = sa.menu()
         texts = [a.text() for a in sound.actions()]
         self.assertTrue(any('还没装语音包' in t for t in texts))
         self.assertFalse(any(t.startswith('语音包：已装') for t in texts))
@@ -387,7 +390,8 @@ class Menu(unittest.TestCase):
         Path(os.path.join(d, 'other.ogg')).write_bytes(b'OggS')
         pet.voice.dir = d
         pet.fill_menu(menu)
-        sound = next(a for a in menu.actions() if a.text() == '声音').menu()
+        sa = next(a for a in menu.actions() if a.text() == '声音')   # 同上，留住 QAction
+        sound = sa.menu()
         texts = [a.text() for a in sound.actions()]
         self.assertIn('语音包：已装 2 句', texts)
         self.assertFalse(any('还没装语音包' in t for t in texts))
