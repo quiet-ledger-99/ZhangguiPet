@@ -89,14 +89,15 @@ class Art(unittest.TestCase):
 
     def test_04_first_last_match_idle(self):
         """首尾对齐：除 nap 末帧（睡着）外，首末帧和待机第 0 帧一致（tall stretch 比较下面 380 行）。"""
-        from PIL import Image                                    # 只用 Pillow，不依赖 numpy（Windows 打包 venv 没装）
-
+        # 只用 QImage（PySide6 已在），不依赖 numpy/Pillow：Windows 打包 venv 里两者都没有
         def premul(path, h=None):
-            im = Image.open(path).convert('RGBA')
-            if h is not None:
-                im = im.crop((0, im.height - h, im.width, im.height))
-            px = im.tobytes()
-            return [px[k + c] * px[k + 3] / 255.0 for k in range(0, len(px), 4) for c in range(3)], im.size
+            im = QImage(str(path)).convertToFormat(QImage.Format_RGBA8888)
+            w, H = im.width(), im.height()
+            h = H if h is None else h
+            raw = bytes(im.constBits())[:im.sizeInBytes()]
+            bpl = im.bytesPerLine()
+            px = b''.join(raw[y * bpl:y * bpl + w * 4] for y in range(H - h, H))
+            return [px[k + c] * px[k + 3] / 255.0 for k in range(0, len(px), 4) for c in range(3)], (w, h)
 
         for spr in ('sprites', 'sprites_legs'):
             idle0, isz = premul(A / spr / 'idle' / '000.webp')
