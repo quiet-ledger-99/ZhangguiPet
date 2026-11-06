@@ -1,5 +1,21 @@
 # 更新记录
 
+## v0.3.12（2026-11-07）· 千问娘 Q 版表情动画，全部 30fps
+
+### 素材（飘着和长脚两种模式都有，Windows / macOS 同步）
+- 12 个动作全部换成**千问娘 Q 版**：待机 idle、微笑 smile、思考 thinking（+ thinking_hold）、得意 smug（+ smug_hold）、挥手 wave、赌气 huff，以及伸懒腰 stretch、打哈欠 yawn、点头 nod、打盹 nap。躲边 peek / peek_legs 换成已锁定的半藏拉开版；汗滴、气鼓鼓特效（fx）跟着换；窗口遮罩 masks / masks_legs 按新帧重算。
+- **全部 30fps，时长和 v0.3.11 一样**：idle / smile / thinking / smug 180 帧（6 秒），thinking_hold / smug_hold / nod 60 帧（2 秒），wave / huff / yawn 120 帧（4 秒），stretch 150 帧（5 秒），nap 180 帧（6 秒）。从原视频重新抽帧、抠图；24→30fps 用预乘 alpha 的线性时间插值补帧，不是重复帧凑数。
+- 飘着版 251×380，伸懒腰仍是 251×416 高画布（`anchor_offset_y: 36`，脚底对齐）；长脚版 375×614。打盹 hold 从第 60 帧接呼吸循环（两种模式都是 `loop_from: 60`）。
+
+### 播放
+- `Sprites.fk` / `Sprites.akf` 改成精确比率 `float(fps) / 12.0`（30fps = 2.5）。EXPR 里的帧号仍按 12fps 写，运行时乘 2.5 再四舍五入到整帧（`eseg`）；旧写法 `round(fps / 12)` 在 2.5 上会被舍成 2，所以不能用。不是 36fps 兜底。
+- 人不在时仍是 250ms 一拍，每拍走 `int(round(akf))` 帧；平时帧间隔 `1000 / fps`（30fps 约 33ms）。
+
+### 没变 / 还没做
+- 台词、语音、走路、显示大小都没动。「一个动作多条随机动画」、摸头 / 戳脸独立动画这轮还没挂上。
+- 默认就是千问娘 Q 版。Grok娘 v3B 是并行皮肤，不在主安装包里。
+- 发布包不含全量语音（和 v0.3.11 一样）。Mac 版 ad-hoc 签名、未公证；Windows 版未签名。
+
 ## 未发布 · 实验：协同三路（聊天 / 派活自动分流）
 
 > ⚠️ **实验功能，默认关，不在 v0.3.11 发布包里。** 没有每条路径都手测过，**可能有 bug**。不要把它当成稳定功能。
